@@ -45,7 +45,7 @@ ${content}
         'Authorization': `Bearer ${apiKey}`,
         'x-volcengine-ep-id': epId
       },
-      timeout: 15000 // 设置请求超时时间
+      timeout: 60000 // 设置请求超时时间（大模型生成慢，改为60秒）
     });
     
     console.log('AI API调用成功', response.data);
@@ -60,28 +60,48 @@ ${content}
   }
 }
 
-// 增加云函数超时时间（默认3秒，这里设置为10秒）
+// 增加云函数超时时间（默认3秒，大模型生成较慢，设置为60秒）
 exports.config = {
-  timeout: 10000
+  timeout: 60000
 };
 
 exports.main = async (event, context) => {
   try {
     console.log('开始生成周报', event);
-    const { startDate, endDate } = event;
+    const { startDate, endDate, startTimestamp, endTimestamp } = event;
+    const wxContext = cloud.getWXContext();
+    const openid = wxContext.OPENID;
     
     // 获取本周的记录
-    console.log('获取本周记录', startDate, endDate);
-    const records = await db.collection('records')
-      .where({
-        createTime: {
-          $gte: startDate,
-          $lte: endDate
-        }
-      })
-      .get();
+    console.log('=============周报云函数启动=============');
+    console.log('获取本周记录', { startTimestamp, endTimestamp, openid });
     
-    console.log('获取到记录', records.data.length);
+    let records;
+    if (startTimestamp && endTimestamp) {
+      // 优先使用时间戳进行查询，确保准确性
+      // 使用 db.command 来获取查询指令
+      const _ = db.command;
+      console.log('使用 timestamp 方式查询');
+      records = await db.collection('records')
+        .where({
+          _openid: openid,
+          timestamp: _.gte(startTimestamp).and(_.lte(endTimestamp))
+        })
+        .get();
+    } else {
+      // 兼容旧的字符串查询（仅作降级）
+      const _ = db.command;
+      console.log('使用 createTime 方式查询（兼容模式）');
+      records = await db.collection('records')
+        .where({
+          _openid: openid,
+          createTime: _.gte(startDate).and(_.lte(endDate))
+        })
+        .get();
+    }
+    
+    console.log('查询数据库完成，获取到记录数量:', records.data.length);
+    console.log('具体数据:', records.data);
     if (records.data.length === 0) {
       return {
         success: false,

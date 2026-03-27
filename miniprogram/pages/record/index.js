@@ -35,12 +35,14 @@ Page({
     const db = wx.cloud.database();
     const now = new Date();
     const createTime = now.toLocaleString();
+    const timestamp = now.getTime(); // 显式获取时间戳
     
     db.collection('records').add({
       data: {
         content: content,
         createTime: createTime,
-        date: now.toDateString()
+        date: now.toDateString(),
+        timestamp: timestamp // 确保写入数据库
       },
       success: function(res) {
         wx.showToast({
@@ -61,6 +63,9 @@ Page({
   getRecords() {
     const db = wx.cloud.database();
     
+    // 小程序端直接调用 db.collection() 时，
+    // 微信云开发会自动附带当前用户的 _openid 进行过滤。
+    // 即：默认只能查到当前用户自己创建的数据。
     db.collection('records').orderBy('createTime', 'desc').get({
       success: function(res) {
         this.setData({
@@ -111,14 +116,29 @@ Page({
   getWeeklySummary() {
     wx.showLoading({ title: '生成周报中...' });
     const now = new Date();
-    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    // 修改为获取过去 7 天的 0 点 0 分时间戳，更符合人类直觉的“一周”
+    const weekAgo = new Date();
+    weekAgo.setDate(now.getDate() - 7);
+    weekAgo.setHours(0, 0, 0, 0);
     
+    // 打印参数用于调试
+    console.log('调用周报云函数，参数：', {
+      startDate: weekAgo.toLocaleString(),
+      endDate: now.toLocaleString(),
+      startTimestamp: weekAgo.getTime(),
+      endTimestamp: now.getTime()
+    });
+
     // 调用云函数生成周报
     wx.cloud.callFunction({
       name: 'generateWeekly',
       data: {
         startDate: weekAgo.toLocaleString(),
-        endDate: now.toLocaleString()
+        endDate: now.toLocaleString(),
+        startTimestamp: weekAgo.getTime(),
+        endTimestamp: now.getTime(),
+        // 如果你需要从本地存储获取 openid 传递给云端，你可以加上这行，但通常云端直接通过 cloud.getWXContext() 获取更安全
+        // openid: wx.getStorageSync('openid')
       },
       success: function(res) {
         wx.hideLoading();

@@ -44,7 +44,7 @@ ${content}
         'Authorization': `Bearer ${apiKey}`,
         'x-volcengine-ep-id': epId
       },
-      timeout: 15000 // 设置请求超时时间
+      timeout: 60000 // 设置请求超时时间（大模型生成慢，改为60秒）
     });
     
     console.log('AI API调用成功', response.data);
@@ -59,20 +59,25 @@ ${content}
   }
 }
 
-// 增加云函数超时时间（默认3秒，这里设置为10秒）
+// 增加云函数超时时间（默认3秒，大模型生成较慢，设置为60秒）
 exports.config = {
-  timeout: 10000
+  timeout: 60000
 };
 
 exports.main = async (event, context) => {
   try {
     console.log('开始生成日记', event);
     const { date } = event;
+    const wxContext = cloud.getWXContext();
+    const openid = wxContext.OPENID;
     
     // 获取当天的记录
-    console.log('获取当天记录', date);
+    console.log('获取当天记录', date, openid);
     const records = await db.collection('records')
-      .where({ date: date })
+      .where({ 
+        date: date,
+        _openid: openid
+      })
       .get();
     
     console.log('获取到记录', records.data.length);
