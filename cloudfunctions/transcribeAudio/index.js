@@ -1,5 +1,6 @@
 const cloud = require('wx-server-sdk');
 const axios = require('axios');
+const crypto = require('crypto');
 
 cloud.init({
   env: cloud.DYNAMIC_CURRENT_ENV
@@ -18,6 +19,7 @@ const SUCCESS_CODE = 1000;
 const RUNNING_CODES = [2000, 2001];
 const SUBMIT_URL = 'https://openspeech.bytedance.com/api/v3/auc/bigmodel/submit';
 const QUERY_URL = 'https://openspeech.bytedance.com/api/v3/auc/bigmodel/query';
+const RESOURCE_FALLBACKS = ['volc.seedasr.auc', 'volc.bigasr.auc'];
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -28,13 +30,13 @@ function createUserId() {
 }
 
 function createTaskId() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${Math.random().toString(36).slice(2, 10)}`;
+  return crypto.randomUUID();
 }
 
-function createHeaders(taskId) {
+function createHeaders(taskId, resourceId) {
   const headers = {
     'Content-Type': 'application/json',
-    'X-Api-Resource-Id': asrConfig.resourceId || 'volc.seedasr.auc',
+    'X-Api-Resource-Id': resourceId,
     'X-Api-Request-Id': taskId,
     'X-Api-Sequence': '-1'
   };
@@ -73,6 +75,23 @@ function extractTranscript(result) {
   return '';
 }
 
+function getAxiosErrorMessage(error) {
+  if (error && error.response && error.response.data) {
+    const data = error.response.data;
+    if (typeof data === 'string' && data.trim()) {
+      return data;
+    }
+    if (data.message) {
+      return data.message;
+    }
+    if (data.msg) {
+      return data.msg;
+    }
+    return JSON.stringify(data);
+  }
+  return error.message || '语音转写失败';
+}
+
 async function getAudioUrl(fileID) {
   const res = await cloud.getTempFileURL({
     fileList: [fileID]
@@ -86,7 +105,18 @@ async function getAudioUrl(fileID) {
   return file.tempFileURL;
 }
 
-async function submitTranscriptionTask(audioUrl, format) {
+function getCandidateResourceIds() {
+  const preferred = asrConfig.resourceId || RESOURCE_FALLBACKS[0];
+  const list = [preferred, ...RESOURCE_FALLBACKS];
+  return Array.from(new Set(list.filter(Boolean)));
+}
+
+function isResourceDeniedError(error) {
+  const message = getAxiosErrorMessage(error);
+  return error && error.response && error.response.status === 403 && message.includes('requested resource not granted');
+}
+
+async function submitTranscriptionTask(audioUrl, format, resourceId) {
   const taskId = createTaskId();
   const payload = {
     user: {
@@ -95,12 +125,22 @@ async function submitTranscriptionTask(audioUrl, format) {
     audio: {
       format: format || 'mp3',
       url: audioUrl,
-      language: asrConfig.language || 'zh-CN'
+      language: asrConfig.language || 'zh-CN',
+      codec: asrConfig.codec || 'raw',
+      rate: asrConfig.rate || 16000,
+      bits: asrConfig.bits || 16,
+      channel: asrConfig.channel || 1
     },
     request: {
       model_name: asrConfig.modelName || 'bigmodel',
       enable_itn: asrConfig.enableItn !== false,
-      enable_punc: asrConfig.enablePunc !== false
+      enable_punc: asrConfig.enablePunc === true,
+      enable_ddc: asrConfig.enableDdc === true,
+      enable_speaker_info: asrConfig.enableSpeakerInfo === true,
+      enable_channel_split: asrConfig.enableChannelSplit === true,
+      show_utterances: asrConfig.showUtterances === true,
+      vad_segment: asrConfig.vadSegment === true,
+      sensitive_words_filter: asrConfig.sensitiveWordsFilter || ''
     }
   };
 
@@ -108,26 +148,23 @@ async function submitTranscriptionTask(audioUrl, format) {
     SUBMIT_URL,
     payload,
     {
-      headers: createHeaders(taskId),
+      headers: createHeaders(taskId, resourceId),
       timeout: 60000
     }
   );
 
-  const task = response.data && response.data.resp;
-
-  if (!task || task.message !== 'success' || !task.id) {
-    throw new Error((task && task.message) || '提交转写任务失败');
-  }
-
-  return task.id || taskId;
+  return {
+    taskId,
+    resourceId
+  };
 }
 
-async function queryTranscriptionTask(taskId) {
+async function queryTranscriptionTask(taskId, resourceId) {
   const response = await axios.post(
     QUERY_URL,
     {},
     {
-      headers: createHeaders(taskId),
+      headers: createHeaders(taskId, resourceId),
       timeout: 60000
     }
   );
@@ -135,18 +172,18 @@ async function queryTranscriptionTask(taskId) {
   return response.data || {};
 }
 
-async function waitForTranscript(taskId) {
+async function waitForTranscript(taskId, resourceId) {
   for (let index = 0; index < 20; index += 1) {
-    const result = await queryTranscriptionTask(taskId);
+    const result = await queryTranscriptionTask(taskId, resourceId);
     const resp = result.resp || result.result || result;
     const code = resp.code;
     const transcript = extractTranscript(result) || extractTranscript(resp);
 
-    if (code === SUCCESS_CODE) {
+    if (transcript) {
       return transcript;
     }
 
-    if (!RUNNING_CODES.includes(code)) {
+    if (typeof code !== 'undefined' && !RUNNING_CODES.includes(code) && code !== SUCCESS_CODE) {
       throw new Error(resp.message || result.message || '语音转写失败');
     }
 
@@ -154,6 +191,23 @@ async function waitForTranscript(taskId) {
   }
 
   throw new Error('语音转写超时');
+}
+
+async function createTranscriptionTaskWithFallback(audioUrl, format) {
+  let lastError = null;
+
+  for (const resourceId of getCandidateResourceIds()) {
+    try {
+      return await submitTranscriptionTask(audioUrl, format, resourceId);
+    } catch (error) {
+      lastError = error;
+      if (!isResourceDeniedError(error)) {
+        throw error;
+      }
+    }
+  }
+
+  throw lastError || new Error('提交转写任务失败');
 }
 
 exports.config = {
@@ -179,8 +233,8 @@ exports.main = async event => {
     }
 
     const audioUrl = await getAudioUrl(fileID);
-    const taskId = await submitTranscriptionTask(audioUrl, format);
-    const transcript = await waitForTranscript(taskId);
+    const task = await createTranscriptionTaskWithFallback(audioUrl, format);
+    const transcript = await waitForTranscript(task.taskId, task.resourceId);
 
     if (!transcript) {
       return {
@@ -197,7 +251,7 @@ exports.main = async event => {
     console.error('语音转写失败', error);
     return {
       success: false,
-      message: error.message || '语音转写失败'
+      message: getAxiosErrorMessage(error)
     };
   }
 };
