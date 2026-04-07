@@ -1,0 +1,58 @@
+<view class="container">
+  <view class="header">
+    <text class="title">个人中心</text>
+    <text class="subtitle">管理你的记录和设置</text>
+  </view>
+
+  <view class="user-card section-card">
+    <view class="user-info">
+      <image class="avatar" src="../../images/avatar.png"></image>
+      <view class="user-details">
+        <text class="user-name">AI 流水账用户</text>
+        <text class="user-id">{{userOpenid}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="stats-section section-card">
+    <view class="stats-grid">
+      <view class="stat-item">
+        <text class="stat-number">{{recordCount}}</text>
+        <text class="stat-label">总记录</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-number">{{audioCount}}</text>
+        <text class="stat-label">语音记录</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-number">{{summaryCount}}</text>
+        <text class="stat-label">生成总结</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="settings-section section-card">
+    <view class="section-head">
+      <text class="section-title">设置</text>
+    </view>
+    <view class="setting-list">
+      <view class="setting-item" bindtap="clearRecords">
+        <text class="setting-label">清空记录</text>
+        <text class="setting-arrow">›</text>
+      </view>
+      <view class="setting-item" bindtap="exportData">
+        <text class="setting-label">导出数据</text>
+        <text class="setting-arrow">›</text>
+      </view>
+      <view class="setting-item" bindtap="about">
+        <text class="setting-label">关于</text>
+        <text class="setting-arrow">›</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="footer">
+    <text class="footer-text">AI 流水账 v1.0.0</text>
+    <text class="footer-desc">让记录更简单，让生活更美好</text>
+  </view>
+</view>

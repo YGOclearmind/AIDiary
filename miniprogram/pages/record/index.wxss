@@ -177,7 +177,23 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 12rpx;
   box-shadow: 0 16rpx 28rpx rgba(34, 197, 94, 0.22);
+}
+
+.save-btn:disabled {
+  background: #d1d5db;
+  box-shadow: none;
+  color: #9ca3af;
+}
+
+.save-btn-icon {
+  font-size: 32rpx;
+}
+
+.save-btn-text {
+  font-size: 28rpx;
+  font-weight: 600;
 }
 
 .records-count {
@@ -277,6 +293,15 @@
 .empty-state {
   padding: 70rpx 24rpx 60rpx;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.empty-icon {
+  font-size: 80rpx;
+  margin-bottom: 10rpx;
 }
 
 .empty-title {
@@ -292,31 +317,7 @@
   font-size: 24rpx;
   color: #98a2b3;
   line-height: 1.7;
-}
-
-.summary-section {
-  display: flex;
-  gap: 20rpx;
-}
-
-.summary-btn {
-  flex: 1;
-  height: 88rpx;
-  margin: 0;
-  border-radius: 999rpx;
-  background: linear-gradient(135deg, #4f7cff 0%, #6d5dfc 100%);
-  color: #ffffff;
-  font-size: 26rpx;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 16rpx 30rpx rgba(79, 124, 255, 0.2);
-}
-
-.summary-btn-light {
-  background: linear-gradient(135deg, #14b8a6 0%, #0ea5e9 100%);
-  box-shadow: 0 16rpx 30rpx rgba(14, 165, 233, 0.2);
+  max-width: 80%;
 }
 
 @keyframes pulse {

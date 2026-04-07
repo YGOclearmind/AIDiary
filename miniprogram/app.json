@@ -1,6 +1,8 @@
 {
   "pages": [
-    "pages/record/index"
+    "pages/record/index",
+    "pages/summary/index",
+    "pages/mine/index"
   ],
   "window": {
     "backgroundColor": "#F4F8FF",
@@ -8,6 +10,32 @@
     "navigationBarBackgroundColor": "#F4F8FF",
     "navigationBarTitleText": "AI流水账",
     "navigationBarTextStyle": "black"
+  },
+  "tabBar": {
+    "color": "#98A2B3",
+    "selectedColor": "#4F7CFF",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/record/index",
+        "text": "记录",
+        "iconPath": "images/icons/home.png",
+        "selectedIconPath": "images/icons/home-active.png"
+      },
+      {
+        "pagePath": "pages/summary/index",
+        "text": "总结",
+        "iconPath": "images/icons/examples.png",
+        "selectedIconPath": "images/icons/examples-active.png"
+      },
+      {
+        "pagePath": "pages/mine/index",
+        "text": "我的",
+        "iconPath": "images/icons/usercenter.png",
+        "selectedIconPath": "images/icons/usercenter-active.png"
+      }
+    ]
   },
   "sitemapLocation": "sitemap.json",
   "style": "v2",

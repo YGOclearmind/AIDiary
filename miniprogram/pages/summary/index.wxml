@@ -1,0 +1,53 @@
+<view class="container">
+  <view class="header">
+    <text class="title">智能总结</text>
+    <text class="subtitle">AI 自动整理你的日常记录</text>
+  </view>
+
+  <view class="summary-section section-card">
+    <view class="section-head">
+      <text class="section-title">快速生成</text>
+      <text class="section-tag">AI 驱动</text>
+    </view>
+    <view class="summary-buttons">
+      <button class="summary-btn summary-btn-daily" bindtap="getDailySummary">
+        <text class="summary-btn-icon">📅</text>
+        <text class="summary-btn-text">每日日记</text>
+        <text class="summary-btn-desc">基于当天记录生成</text>
+      </button>
+      <button class="summary-btn summary-btn-weekly" bindtap="getWeeklySummary">
+        <text class="summary-btn-icon">📊</text>
+        <text class="summary-btn-text">每周周报</text>
+        <text class="summary-btn-desc">汇总当周所有记录</text>
+      </button>
+    </view>
+  </view>
+
+  <view class="history-section section-card">
+    <view class="section-head">
+      <text class="section-title">历史总结</text>
+      <text class="records-count">{{summaryHistory.length}} 条</text>
+    </view>
+    <scroll-view class="summary-scroll" scroll-y enhanced show-scrollbar="false">
+      <view wx:if="summaryHistory.length > 0">
+        <view class="summary-item" wx:for="{{summaryHistory}}" wx:key="_id">
+          <view class="summary-item-header">
+            <text class="summary-item-title">{{item.type === 'daily' ? '每日日记' : '每周周报'}}</text>
+            <text class="summary-item-date">{{item.date}}</text>
+          </view>
+          <text class="summary-item-content">{{item.content}}</text>
+          <view class="summary-item-footer">
+            <button class="copy-btn" bindtap="copySummary" data-id="{{item._id}}">
+              <text class="copy-btn-icon">📋</text>
+              <text class="copy-btn-text">复制</text>
+            </button>
+          </view>
+        </view>
+      </view>
+      <view wx:else class="empty-state">
+        <text class="empty-title">暂无历史总结</text>
+        <text class="empty-desc">生成总结后，历史记录会显示在这里</text>
+      </view>
+    </scroll-view>
+  </view>
+</view>

@@ -1,7 +1,7 @@
 <view class="container">
   <view class="header">
     <text class="title">AI 流水账</text>
-    <text class="subtitle">支持手写速记、语音记录和 AI 总结</text>
+    <text class="subtitle">支持语音记录和 AI 智能总结</text>
   </view>
 
   <view class="hero-card">
@@ -30,7 +30,10 @@
       </button>
       <text class="voice-status">{{voiceStatus}}</text>
     </view>
-    <button class="save-btn" bindtap="saveInput">保存这条记录</button>
+    <button class="save-btn" bindtap="saveInput">
+      <text class="save-btn-icon">💾</text>
+      <text class="save-btn-text">保存记录</text>
+    </button>
   </view>
 
   <view class="records-list section-card">
@@ -55,7 +58,7 @@
                 data-id="{{item._id}}"
                 data-fileid="{{item.audioFileID}}"
                 bindtap="playAudio"
-              >{{playingRecordId === item._id ? '暂停' : '播放'}}</button>
+              >{{playingRecordId === item._id ? '⏸' : '▶'}}</button>
             </view>
             <text class="audio-record-note">{{item.transcriptText || item.content}}</text>
             <text class="record-item-time">{{item.createTime}}</text>
@@ -67,14 +70,10 @@
         </view>
       </view>
       <view wx:else class="empty-state">
+        <text class="empty-icon">📝</text>
         <text class="empty-title">近两周还没有记录</text>
         <text class="empty-desc">可以先打字，也可以点击录音按钮保存一条语音记录。</text>
       </view>
     </scroll-view>
-  </view>
-
-  <view class="summary-section">
-    <button class="summary-btn summary-btn-light" bindtap="getDailySummary">生成每日日记</button>
-    <button class="summary-btn" bindtap="getWeeklySummary">生成每周周报</button>
   </view>
 </view>
