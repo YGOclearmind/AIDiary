@@ -52,6 +52,24 @@ function normalizeFacts(rawFacts) {
   return Array.from(unique);
 }
 
+function parseFactsFromAa1Body(body) {
+  if (!body || typeof body !== 'object') {
+    return [];
+  }
+  if (Array.isArray(body.data)) {
+    return normalizeFacts(body.data);
+  }
+  const title = String(body.title || '').trim();
+  if (!title) {
+    return [];
+  }
+  const y = String(body.y || '').trim();
+  const m = String(body.m || '').trim();
+  const d = String(body.d || '').trim();
+  const datePrefix = y && m && d ? `${y}年${m}月${d}日 ` : '';
+  return [`${datePrefix}${title}`];
+}
+
 function sampleItems(list, count) {
   if (!Array.isArray(list) || list.length === 0) {
     return [];
@@ -121,7 +139,7 @@ async function fetchFactsFromApi() {
   if (body.code !== 200) {
     return [];
   }
-  return normalizeFacts(body.data);
+  return parseFactsFromAa1Body(body);
 }
 
 async function getFacts(monthDay, dateStartTimestamp) {
