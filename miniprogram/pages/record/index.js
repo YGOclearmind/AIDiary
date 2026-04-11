@@ -20,6 +20,10 @@ function formatPickerDate(date) {
   return `${date.getFullYear()}-${padNumber(date.getMonth() + 1)}-${padNumber(date.getDate())}`;
 }
 
+function formatMonthDay(date) {
+  return `${padNumber(date.getMonth() + 1)}-${padNumber(date.getDate())}`;
+}
+
 Page({
   data: {
     inputValue: '',
@@ -32,6 +36,13 @@ Page({
     voiceStatus: '点击开始录音，保存一条语音记录',
     recentRangeText: '近14天记录',
     recentRecordCount: 0,
+    inspirationLoading: false,
+    inspirationMonthDay: formatMonthDay(new Date()),
+    inspirationFact: '',
+    inspirationMemory: null,
+    inspirationFacts: [],
+    inspirationMemories: [],
+    inspirationError: '',
     playingRecordId: '',
     isDevtools: false
   },
@@ -47,6 +58,7 @@ Page({
     });
     this.initVoiceInput();
     this.initAudioPlayer();
+    this.getTodayInspiration();
     this.getRecords();
   },
 
@@ -154,6 +166,69 @@ Page({
   handleInputBlur() {
     this.setData({
       showInputTip: false
+    });
+  },
+
+  refreshInspiration() {
+    const facts = this.data.inspirationFacts || [];
+    const memories = this.data.inspirationMemories || [];
+    let inspirationFact = '';
+    let inspirationMemory = null;
+    if (facts.length) {
+      const factIndex = Math.floor(Math.random() * facts.length);
+      inspirationFact = facts[factIndex];
+    }
+    if (memories.length) {
+      const memoryIndex = Math.floor(Math.random() * memories.length);
+      inspirationMemory = memories[memoryIndex];
+    }
+    this.setData({
+      inspirationFact,
+      inspirationMemory,
+      inspirationError: ''
+    });
+  },
+
+  getTodayInspiration() {
+    this.setData({
+      inspirationLoading: true,
+      inspirationError: ''
+    });
+    wx.cloud.callFunction({
+      name: 'getTodayInspiration',
+      success: res => {
+        const result = res.result || {};
+        if (!result.success) {
+          this.setData({
+            inspirationLoading: false,
+            inspirationError: result.message || '灵感获取失败',
+            inspirationMonthDay: result.monthDay || formatMonthDay(new Date()),
+            inspirationFact: '',
+            inspirationMemory: null,
+            inspirationFacts: [],
+            inspirationMemories: []
+          });
+          return;
+        }
+        this.setData({
+          inspirationLoading: false,
+          inspirationMonthDay: result.monthDay || formatMonthDay(new Date()),
+          inspirationFacts: result.facts || [],
+          inspirationMemories: result.memoryRecords || []
+        });
+        this.refreshInspiration();
+      },
+      fail: () => {
+        this.setData({
+          inspirationLoading: false,
+          inspirationError: '灵感获取失败，请稍后重试',
+          inspirationMonthDay: formatMonthDay(new Date()),
+          inspirationFact: '',
+          inspirationMemory: null,
+          inspirationFacts: [],
+          inspirationMemories: []
+        });
+      }
     });
   },
 
@@ -390,6 +465,7 @@ Page({
     const createTime = formatRecordDateTime(recordDate);
     const timestamp = recordDate.getTime();
     const date = formatRecordDate(recordDate);
+    const monthDay = formatMonthDay(recordDate);
 
     db.collection('records').add({
       data: {
@@ -397,6 +473,8 @@ Page({
         createTime: createTime,
         date: date,
         timestamp: timestamp,
+        year: recordDate.getFullYear(),
+        monthDay: monthDay,
         recordType: extra.recordType || 'text',
         audioFileID: extra.audioFileID || '',
         audioDuration: extra.audioDuration || 0,

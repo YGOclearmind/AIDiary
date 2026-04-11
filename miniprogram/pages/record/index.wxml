@@ -10,6 +10,31 @@
     <text class="hero-desc">通过文字速记，快速记录下当下的想法、待办事项和心情。</text>
   </view>
 
+  <view class="inspiration-card section-card">
+    <view class="section-head">
+      <view>
+        <text class="section-title">今日灵感</text>
+        <text class="section-desc">{{inspirationMonthDay}} 的历史片段</text>
+      </view>
+      <view class="inspiration-refresh" bindtap="refreshInspiration">换一条</view>
+    </view>
+    <view wx:if="{{inspirationLoading}}" class="inspiration-loading">灵感整理中...</view>
+    <view wx:elif="{{inspirationError}}" class="inspiration-error">{{inspirationError}}</view>
+    <view wx:else class="inspiration-content">
+      <view class="inspiration-block">
+        <text class="inspiration-label">历史上的今天</text>
+        <text class="inspiration-text">{{inspirationFact || '今天先写下一条记录，稍后再来看看灵感。'}}</text>
+      </view>
+      <view class="inspiration-block">
+        <text class="inspiration-label">你的往年今日</text>
+        <view wx:if="{{inspirationMemory}}">
+          <text class="inspiration-text">{{inspirationMemory.year}} · {{inspirationMemory.content}}</text>
+        </view>
+        <text wx:else class="inspiration-text">还没有找到往年今日记录，今天可以从一条小记录开始。</text>
+      </view>
+    </view>
+  </view>
+
   <view class="input-section section-card">
     <view class="section-head">
       <text class="section-title">快速记录</text>
