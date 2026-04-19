@@ -262,8 +262,7 @@
 .voice-btn::after,
 .save-btn::after,
 .audio-play-btn::after,
-.edit-btn::after,
-.delete-btn::after {
+.action-btn::after {
   border: none;
 }
 
@@ -340,10 +339,17 @@
   border-radius: 20rpx;
   background: linear-gradient(160deg, #ffffff 0%, #fdfaff 100%);
   border: 1rpx solid #efe5ff;
+  transition: all 0.2s ease;
 }
 
 .record-item:last-child {
   margin-bottom: 0;
+}
+
+.record-item-selected {
+  background: linear-gradient(160deg, #f8f3ff 0%, #f0f5ff 100%);
+  border-color: #d4c5ff;
+  box-shadow: 0 8rpx 24rpx rgba(109, 91, 214, 0.12);
 }
 
 .record-item-content {
@@ -405,8 +411,7 @@
   color: #ffffff;
 }
 
-.edit-btn,
-.delete-btn {
+.action-btn {
   flex: 0 0 auto;
   width: 54rpx;
   min-width: 54rpx;
@@ -423,13 +428,23 @@
   border: 1rpx solid #ece3ff;
 }
 
-.edit-btn-icon {
-  font-size: 18rpx;
+.action-btn:active {
+  background: #ebe4ff;
+  transform: scale(0.95);
 }
 
-.delete-btn-icon {
-  font-size: 20rpx;
-  font-weight: 600;
+.action-btn-delete {
+  background: #fff0f3;
+  border-color: #ffe3e8;
+  color: #b85c6e;
+}
+
+.action-btn-delete:active {
+  background: #ffe4e8;
+}
+
+.action-btn-icon {
+  font-size: 18rpx;
 }
 
 .record-item-text {

@@ -44,7 +44,8 @@ Page({
     inspirationMemories: [],
     inspirationError: '',
     playingRecordId: '',
-    isDevtools: false
+    isDevtools: false,
+    selectedRecordId: ''
   },
 
   onLoad() {
@@ -328,6 +329,22 @@ Page({
         });
       }
     });
+  },
+
+  toggleRecordActions(e) {
+    const recordId = e.currentTarget.dataset.id;
+    if (!recordId) {
+      return;
+    }
+    if (this.data.selectedRecordId === recordId) {
+      this.setData({
+        selectedRecordId: ''
+      });
+    } else {
+      this.setData({
+        selectedRecordId: recordId
+      });
+    }
   },
 
   playAudio(e) {

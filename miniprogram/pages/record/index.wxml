@@ -83,40 +83,40 @@
     </view>
     <scroll-view class="records-scroll" scroll-y enhanced show-scrollbar="false">
       <view wx:if="{{records.length > 0}}">
-        <view class="record-item" wx:for="{{records}}" wx:key="_id">
-          <view wx:if="{{item.recordType === 'audio'}}" class="record-item-content">
+        <view class="record-item {{selectedRecordId === item._id ? 'record-item-selected' : ''}}" wx:for="{{records}}" wx:key="_id">
+          <view wx:if="{{item.recordType === 'audio'}}" class="record-item-content" catchtap="toggleRecordActions" data-id="{{item._id}}">
             <view class="audio-record-row">
               <view class="audio-record-main">
                 <text class="audio-record-title">语音记录</text>
                 <text class="audio-record-desc">{{item.audioDurationText || '时长未知'}}</text>
               </view>
-              <view class="record-actions">
+              <view wx:if="{{selectedRecordId === item._id}}" class="record-actions">
                 <view
                   class="audio-play-btn {{playingRecordId === item._id ? 'audio-play-btn-active' : ''}}"
                   data-id="{{item._id}}"
                   data-fileid="{{item.audioFileID}}"
-                  bindtap="playAudio"
+                  catchtap="playAudio"
                 >{{playingRecordId === item._id ? '⏸' : '▶'}}</view>
-                <view class="edit-btn" data-id="{{item._id}}" bindtap="editRecord">
-                  <text class="edit-btn-icon">✏️</text>
+                <view class="action-btn" catchtap="editRecord" data-id="{{item._id}}">
+                  <text class="action-btn-icon">✏️</text>
                 </view>
-                <view class="delete-btn" data-id="{{item._id}}" bindtap="deleteRecord">
-                  <text class="delete-btn-icon">×</text>
+                <view class="action-btn action-btn-delete" catchtap="deleteRecord" data-id="{{item._id}}">
+                  <text class="action-btn-icon">×</text>
                 </view>
               </view>
             </view>
             <text class="audio-record-note">{{item.transcriptText || item.content}}</text>
             <text class="record-item-time">{{item.createTime}}</text>
           </view>
-          <view wx:else class="record-item-content">
+          <view wx:else class="record-item-content" catchtap="toggleRecordActions" data-id="{{item._id}}">
             <view class="record-text-row">
               <text class="record-item-text">{{item.content}}</text>
-              <view class="record-actions">
-                <view class="edit-btn" data-id="{{item._id}}" bindtap="editRecord">
-                  <text class="edit-btn-icon">✏️</text>
+              <view wx:if="{{selectedRecordId === item._id}}" class="record-actions">
+                <view class="action-btn" catchtap="editRecord" data-id="{{item._id}}">
+                  <text class="action-btn-icon">✏️</text>
                 </view>
-                <view class="delete-btn" data-id="{{item._id}}" bindtap="deleteRecord">
-                  <text class="delete-btn-icon">×</text>
+                <view class="action-btn action-btn-delete" catchtap="deleteRecord" data-id="{{item._id}}">
+                  <text class="action-btn-icon">×</text>
                 </view>
               </view>
             </view>
