@@ -24,6 +24,14 @@ function formatMonthDay(date) {
   return `${padNumber(date.getMonth() + 1)}-${padNumber(date.getDate())}`;
 }
 
+function getRecordDateLabel(value) {
+  if (!value) {
+    return '今日';
+  }
+  const today = formatPickerDate(new Date());
+  return value === today ? '今日' : value;
+}
+
 Page({
   data: {
     inputValue: '',
@@ -32,6 +40,7 @@ Page({
     voiceAvailable: true,
     showVoiceEntry: false,
     selectedRecordDate: '',
+    recordDateLabel: '今日',
     showInputTip: false,
     voiceStatus: '点击开始录音，保存一条语音记录',
     recentRangeText: '近14天记录',
@@ -55,7 +64,8 @@ Page({
     this.innerAudioContext = wx.createInnerAudioContext();
     this.setData({
       isDevtools: systemInfo.platform === 'devtools',
-      selectedRecordDate: formatPickerDate(new Date())
+      selectedRecordDate: formatPickerDate(new Date()),
+      recordDateLabel: '今日'
     });
     this.initVoiceInput();
     this.initAudioPlayer();
@@ -153,8 +163,10 @@ Page({
   },
 
   onRecordDateChange(e) {
+    const value = e.detail.value;
     this.setData({
-      selectedRecordDate: e.detail.value
+      selectedRecordDate: value,
+      recordDateLabel: getRecordDateLabel(value)
     });
   },
 
@@ -462,6 +474,7 @@ Page({
     this.saveRecord(content);
     this.setData({
       inputValue: '',
+      selectedRecordId: '',
       showInputTip: false,
       voiceStatus: this.data.voiceAvailable ? '点击开始录音，保存一条语音记录' : this.data.voiceStatus
     });
@@ -534,7 +547,8 @@ Page({
           }));
           this.setData({
             records: records,
-            recentRecordCount: records.length
+            recentRecordCount: records.length,
+            selectedRecordId: records.some(item => item._id === this.data.selectedRecordId) ? this.data.selectedRecordId : ''
           });
         }.bind(this),
         fail: function(res) {
@@ -634,7 +648,7 @@ Page({
   },
 
   editRecord(e) {
-    const recordId = e.currentTarget.dataset.id;
+    const recordId = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id) || this.data.selectedRecordId;
     if (!recordId) {
       wx.showToast({
         title: '获取记录ID失败',
@@ -678,6 +692,9 @@ Page({
                 title: '修改成功',
                 icon: 'success'
               });
+              this.setData({
+                selectedRecordId: ''
+              });
               this.getRecords();
             },
             fail: () => {
@@ -693,7 +710,7 @@ Page({
   },
 
   deleteRecord(e) {
-    const recordId = e.currentTarget.dataset.id;
+    const recordId = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id) || this.data.selectedRecordId;
     if (!recordId) {
       wx.showToast({
         title: '获取记录ID失败',
@@ -713,6 +730,9 @@ Page({
               wx.showToast({
                 title: '删除成功',
                 icon: 'success'
+              });
+              this.setData({
+                selectedRecordId: ''
               });
               this.getRecords();
             },

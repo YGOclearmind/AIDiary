@@ -1,7 +1,7 @@
 <view class="container">
   <view class="header">
     <text class="title">智能总结</text>
-    <text class="subtitle">AI 自动整理你的日常记录</text>
+    <text class="subtitle">按分类整理你的碎碎念</text>
   </view>
 
   <view class="summary-section section-card">
@@ -12,13 +12,13 @@
     <view class="summary-buttons">
       <button class="summary-btn summary-btn-daily" bindtap="getDailySummary">
         <text class="summary-btn-icon">📅</text>
-        <text class="summary-btn-text">每日日记</text>
-        <text class="summary-btn-desc">基于当天记录生成</text>
+        <text class="summary-btn-text">每日条目总结</text>
+        <text class="summary-btn-desc">按分类陈述当天碎碎念</text>
       </button>
       <button class="summary-btn summary-btn-weekly" bindtap="getWeeklySummary">
         <text class="summary-btn-icon">📊</text>
-        <text class="summary-btn-text">每周周报</text>
-        <text class="summary-btn-desc">汇总当周所有记录</text>
+        <text class="summary-btn-text">每周条目总结</text>
+        <text class="summary-btn-desc">按分类陈述当周碎碎念</text>
       </button>
     </view>
   </view>
@@ -32,10 +32,16 @@
       <view wx:if="{{summaryHistory.length > 0}}">
         <view class="summary-item" wx:for="{{summaryHistory}}" wx:key="_id">
           <view class="summary-item-header">
-            <text class="summary-item-title">{{item.type === 'daily' ? '每日日记' : '每周周报'}}</text>
+            <text class="summary-item-title">{{item.type === 'daily' ? '每日条目总结' : '每周条目总结'}}</text>
             <text class="summary-item-date">{{item.date}}</text>
           </view>
-          <text class="summary-item-content">{{item.content}}</text>
+          <view wx:if="{{item.summaryItems.length > 0}}">
+            <view wx:for="{{item.summaryItems}}" wx:key="title" class="summary-category-block">
+              <text class="summary-category-title">{{item.title}}</text>
+              <text class="summary-item-content">{{item.points.join('；')}}</text>
+            </view>
+          </view>
+          <text wx:else class="summary-item-content">{{item.content}}</text>
           <view class="summary-item-footer">
             <button class="copy-btn" bindtap="copySummary" data-id="{{item._id}}">
               <text class="copy-btn-icon">📋</text>

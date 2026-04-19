@@ -163,6 +163,21 @@
   writing-mode: horizontal-tb;
 }
 
+.summary-category-block {
+  margin-bottom: 14rpx;
+}
+
+.summary-category-block:last-child {
+  margin-bottom: 0;
+}
+
+.summary-category-title {
+  display: block;
+  margin-bottom: 8rpx;
+  font-size: 22rpx;
+  color: #8f83a5;
+}
+
 .summary-item-footer {
   display: flex;
   justify-content: flex-end;

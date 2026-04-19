@@ -124,6 +124,49 @@ Page({
     });
   },
 
+  seedMockData() {
+    wx.showModal({
+      title: '生成示例数据',
+      content: '将写入近三年的虚拟碎碎念记录，并初始化分类库，是否继续？',
+      success: res => {
+        if (!res.confirm) {
+          return;
+        }
+        wx.showLoading({ title: '生成中...' });
+        wx.cloud.callFunction({
+          name: 'seedMockRecords',
+          data: {
+            years: 3
+          },
+          success: callRes => {
+            wx.hideLoading();
+            const result = callRes.result || {};
+            if (!result.success) {
+              wx.showToast({
+                title: result.message || '生成失败',
+                icon: 'none'
+              });
+              return;
+            }
+            wx.showModal({
+              title: '生成完成',
+              content: result.message || '示例数据已生成',
+              showCancel: false
+            });
+            this.getStats();
+          },
+          fail: () => {
+            wx.hideLoading();
+            wx.showToast({
+              title: '生成失败',
+              icon: 'none'
+            });
+          }
+        });
+      }
+    });
+  },
+
   about() {
     wx.showModal({
       title: '关于 AI 流水账',

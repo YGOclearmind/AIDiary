@@ -1,86 +1,148 @@
-// cloudfunctions/generateDiary/index.js
 const cloud = require('wx-server-sdk');
-const axios = require('axios');
 
 cloud.init({
   env: cloud.DYNAMIC_CURRENT_ENV
 });
 
 const db = cloud.database();
+const _ = db.command;
 
-// 从配置文件读取敏感信息
-const config = require('./config.js');
-const { apiKey, apiUrl, epId, modelName } = config.aiConfig;
+const DEFAULT_CATEGORIES = [
+  { code: 'food', name: '美食', keywords: ['吃', '喝', '咖啡', '奶茶', '火锅', '外卖', '美团', '餐厅', '早餐', '晚餐', '午餐', '甜品'] },
+  { code: 'movie', name: '电影', keywords: ['电影', '影院', '剧', '综艺', '追剧', '票房', '纪录片'] },
+  { code: 'study', name: '学习', keywords: ['学习', '复习', '课程', '读书', '笔记', '考试', '刷题', '作业'] },
+  { code: 'work', name: '工作', keywords: ['工作', '开会', '需求', '项目', '客户', '加班', '汇报', '职场'] },
+  { code: 'sport', name: '运动', keywords: ['运动', '跑步', '健身', '游泳', '骑行', '瑜伽', '羽毛球', '篮球'] },
+  { code: 'other', name: '其他', keywords: [] }
+];
 
-// 调用 AI API 生成日记
-async function generateDiaryContent(records) {
-  const content = records.map(record => {
-    if (record.recordType === 'audio') {
-      return record.transcript || record.content;
+function normalizeText(text) {
+  return String(text || '').trim();
+}
+
+function getRecordText(record) {
+  if (!record) {
+    return '';
+  }
+  if (record.recordType === 'audio') {
+    return normalizeText(record.transcript || record.content);
+  }
+  return normalizeText(record.content);
+}
+
+function matchCategoryName(text, categories) {
+  const lowerText = text.toLowerCase();
+  for (const category of categories) {
+    if (category.code === 'other') {
+      continue;
     }
-    return record.content;
-  }).join('\n');
-  
+    const hit = (category.keywords || []).some(keyword => lowerText.includes(String(keyword).toLowerCase()));
+    if (hit) {
+      return category.name;
+    }
+  }
+  return '其他';
+}
+
+function uniquePoints(records, limit) {
+  const points = [];
+  const seen = new Set();
+  for (const record of records) {
+    const text = getRecordText(record);
+    if (!text) {
+      continue;
+    }
+    const point = text.length > 30 ? `${text.slice(0, 30)}...` : text;
+    if (seen.has(point)) {
+      continue;
+    }
+    seen.add(point);
+    points.push(point);
+    if (points.length >= limit) {
+      break;
+    }
+  }
+  return points;
+}
+
+function buildSummaryItems(records, categories, prefix) {
+  const grouped = {};
+  categories.forEach(category => {
+    grouped[category.name] = [];
+  });
+  records.forEach(record => {
+    const text = getRecordText(record);
+    if (!text) {
+      return;
+    }
+    const categoryName = matchCategoryName(text, categories);
+    if (!grouped[categoryName]) {
+      grouped[categoryName] = [];
+    }
+    grouped[categoryName].push(record);
+  });
+  return Object.keys(grouped)
+    .map(categoryName => {
+      const categoryRecords = grouped[categoryName];
+      if (!categoryRecords || !categoryRecords.length) {
+        return null;
+      }
+      return {
+        category: categoryName,
+        title: `${prefix}${categoryName}`,
+        count: categoryRecords.length,
+        points: uniquePoints(categoryRecords, 4)
+      };
+    })
+    .filter(Boolean);
+}
+
+function toSummaryText(items) {
+  return items
+    .map(item => {
+      const lines = item.points.map(point => `- ${point}`).join('\n');
+      return `${item.title}（${item.count}条）\n${lines}`;
+    })
+    .join('\n\n');
+}
+
+async function loadCategories() {
   try {
-    // 构建提示词
-    const prompt = `请根据以下流水账记录，生成一篇简洁的每日日记，要求：
-1. 总结当天的主要活动和事件
-2. 语言自然流畅，符合日记风格
-3. 突出重点内容
-4. 适当添加一些积极的感悟
-
-流水账记录：
-${content}
-
-生成的日记：`;
-    
-    // 调用 AI API
-    console.log('开始调用AI API');
-    const response = await axios.post(apiUrl, {
-      model: modelName,
-      messages: [
-        { role: 'system', content: '你是一个专业的日记撰写助手，擅长将零散的记录整理成有条理的日记' },
-        { role: 'user', content: prompt }
-      ],
-      max_tokens: 500
-    }, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'x-volcengine-ep-id': epId
-      },
-      timeout: 60000 // 设置请求超时时间（大模型生成慢，改为60秒）
-    });
-    
-    console.log('AI API调用成功', response.data);
-    
-    // 提取 AI 生成的内容
-    const diaryContent = response.data.choices[0].message.content;
-    return diaryContent;
+    const res = await db.collection('categoryKnowledge')
+      .where({
+        enabled: _.neq(false)
+      })
+      .limit(50)
+      .get();
+    if (!res.data.length) {
+      return DEFAULT_CATEGORIES;
+    }
+    const list = res.data
+      .map(item => ({
+        code: item.code || normalizeText(item.name).toLowerCase(),
+        name: item.name || '',
+        keywords: Array.isArray(item.keywords) ? item.keywords : []
+      }))
+      .filter(item => item.name);
+    const hasOther = list.some(item => item.name === '其他');
+    if (!hasOther) {
+      list.push({ code: 'other', name: '其他', keywords: [] });
+    }
+    return list.length ? list : DEFAULT_CATEGORIES;
   } catch (error) {
-    console.error('AI API 调用失败', error);
-    // 降级处理：使用默认模板
-    return `# 今日日记\n\n${content}\n\n今天是充实的一天，完成了很多事情。希望明天也能保持这样的状态！`;
+    return DEFAULT_CATEGORIES;
   }
 }
 
-// 增加云函数超时时间（默认3秒，大模型生成较慢，设置为60秒）
-exports.config = {
-  timeout: 60000
-};
-
 exports.main = async (event, context) => {
   try {
-    console.log('开始生成日记', event);
     const { date, startTimestamp, endTimestamp } = event;
     const wxContext = cloud.getWXContext();
     const openid = wxContext.OPENID;
-    
-    // 获取当天的记录
-    console.log('获取当天记录', date, openid);
+
+    const categories = await loadCategories();
     let records;
     if (startTimestamp && endTimestamp) {
-      const _ = db.command;
       records = await db.collection('records')
         .where({
           _openid: openid,
@@ -104,41 +166,37 @@ exports.main = async (event, context) => {
         })
         .get();
     }
-    
-    console.log('获取到记录', records.data.length);
+
     if (records.data.length === 0) {
       return {
         success: false,
         message: '当天无记录'
       };
     }
-    
-    // 生成日记
-    console.log('开始生成日记内容');
-    const diaryContent = await generateDiaryContent(records.data);
-    console.log('日记生成完成');
-    
-    // 保存日记到数据库
-    console.log('保存日记到数据库');
-    const result = await db.collection('diaries').add({
+
+    const summaryItems = buildSummaryItems(records.data, categories, '今日');
+    const summaryText = toSummaryText(summaryItems);
+
+    await db.collection('diaries').add({
       data: {
         type: 'daily',
         date: date,
-        content: diaryContent,
+        content: summaryText,
+        summaryItems,
         createTime: new Date().toLocaleString()
       }
     });
-    
-    console.log('保存成功', result);
+
     return {
       success: true,
-      diary: diaryContent
+      diary: summaryText,
+      summaryText,
+      summaryItems
     };
   } catch (error) {
-    console.error('生成日记失败', error);
     return {
       success: false,
-      message: '生成日记失败',
+      message: '生成每日条目总结失败',
       error: error.message
     };
   }
