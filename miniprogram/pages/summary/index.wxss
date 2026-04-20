@@ -72,6 +72,30 @@
   gap: 20rpx;
 }
 
+.year-selector {
+  width: 100%;
+  margin-bottom: 22rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.year-label {
+  font-size: 24rpx;
+  color: #6b5f86;
+}
+
+.year-picker-value {
+  min-width: 180rpx;
+  text-align: center;
+  padding: 10rpx 20rpx;
+  border-radius: 999rpx;
+  background: #f3ecff;
+  color: #5f48a3;
+  font-size: 24rpx;
+}
+
 .summary-btn {
   width: 100%;
   margin: 0;
@@ -97,6 +121,11 @@
 
 .summary-btn-weekly {
   background: linear-gradient(140deg, #5d78ff 0%, #6d7eff 55%, #8ea0ff 100%);
+  color: #ffffff;
+}
+
+.summary-btn-yearly {
+  background: linear-gradient(140deg, #4b5f87 0%, #5f6f9a 50%, #7d8bb4 100%);
   color: #ffffff;
 }
 

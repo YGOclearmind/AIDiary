@@ -47,11 +47,13 @@ function randomFrom(list) {
   return list[Math.floor(Math.random() * list.length)];
 }
 
-function buildMockRecord(date) {
+function buildMockRecord(date, openid) {
   const categories = Object.keys(SENTENCE_POOL);
   const category = randomFrom(categories);
   const sentence = randomFrom(SENTENCE_POOL[category]);
   return {
+    _openid: openid,
+    userOpenid: openid,
     content: sentence,
     createTime: formatRecordDateTime(date),
     date: formatRecordDate(date),
@@ -95,6 +97,15 @@ async function ensureCategoryKnowledge() {
 
 exports.main = async (event) => {
   try {
+    const wxContext = cloud.getWXContext();
+    const openid = wxContext.OPENID;
+    if (!openid) {
+      return {
+        success: false,
+        message: '无法获取当前用户 openid'
+      };
+    }
+
     const years = Number(event && event.years) || 3;
     const totalDays = years * 365;
     const interval = 4;
@@ -105,7 +116,7 @@ exports.main = async (event) => {
 
     for (let offset = totalDays; offset >= 0; offset -= interval) {
       const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset, 19, 30, 0, 0);
-      records.push(buildMockRecord(date));
+      records.push(buildMockRecord(date, openid));
     }
 
     for (const record of records) {
@@ -117,7 +128,8 @@ exports.main = async (event) => {
     return {
       success: true,
       count: records.length,
-      message: `已生成${records.length}条三年示例数据`
+      message: `已生成${records.length}条三年示例数据`,
+      openid
     };
   } catch (error) {
     return {

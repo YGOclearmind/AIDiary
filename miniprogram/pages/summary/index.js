@@ -12,13 +12,54 @@ function formatSummaryForModal(summaryItems, fallbackText) {
   }).join('\n');
 }
 
+function getSummaryTypeLabel(type) {
+  if (type === 'daily') {
+    return '每日条目总结';
+  }
+  if (type === 'weekly') {
+    return '每周条目总结';
+  }
+  if (type === 'yearly') {
+    return '年度条目总结';
+  }
+  return '条目总结';
+}
+
+function buildYearOptions(span = 10) {
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  for (let i = 0; i <= span; i += 1) {
+    years.push(currentYear - i);
+  }
+  return years;
+}
+
 Page({
   data: {
-    summaryHistory: []
+    summaryHistory: [],
+    yearOptions: [],
+    selectedYear: new Date().getFullYear(),
+    selectedYearIndex: 0
   },
 
   onLoad() {
+    const yearOptions = buildYearOptions(10);
+    this.setData({
+      yearOptions: yearOptions,
+      selectedYear: yearOptions[0],
+      selectedYearIndex: 0
+    });
     this.getSummaryHistory();
+  },
+
+  onYearChange(e) {
+    const index = Number(e.detail.value || 0);
+    const yearOptions = this.data.yearOptions || [];
+    const selectedYear = yearOptions[index] || yearOptions[0] || new Date().getFullYear();
+    this.setData({
+      selectedYearIndex: index,
+      selectedYear: selectedYear
+    });
   },
 
   getDailySummary() {
@@ -106,6 +147,43 @@ Page({
     });
   },
 
+  getYearlySummary() {
+    wx.showLoading({ title: '生成年报中...' });
+    const year = Number(this.data.selectedYear) || new Date().getFullYear();
+
+    wx.cloud.callFunction({
+      name: 'generateYearly',
+      data: {
+        year: year
+      },
+      success: function(res) {
+        wx.hideLoading();
+        if (res.result && res.result.success) {
+          const summaryItems = res.result.summaryItems || [];
+          const summaryText = res.result.summaryText || res.result.yearly || '';
+          wx.showModal({
+            title: '年度条目总结',
+            content: formatSummaryForModal(summaryItems, summaryText),
+            showCancel: false
+          });
+          this.saveSummaryHistory('yearly', `${year}年`, summaryText, summaryItems);
+        } else {
+          wx.showToast({
+            title: (res.result && res.result.message) || '生成年报失败',
+            icon: 'none'
+          });
+        }
+      }.bind(this),
+      fail: function() {
+        wx.hideLoading();
+        wx.showToast({
+          title: '生成年报失败',
+          icon: 'none'
+        });
+      }
+    });
+  },
+
   saveSummaryHistory(type, date, content, summaryItems = []) {
     const db = wx.cloud.database();
     const now = new Date();
@@ -140,6 +218,7 @@ Page({
           this.setData({
             summaryHistory: res.data.map(item => ({
               ...item,
+              typeLabel: getSummaryTypeLabel(item.type),
               summaryItems: Array.isArray(item.summaryItems) ? item.summaryItems : []
             }))
           });
