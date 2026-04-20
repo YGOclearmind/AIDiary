@@ -1,7 +1,7 @@
 <view class="container">
   <view class="header">
     <text class="title">个人中心</text>
-    <text class="subtitle">管理你的记录和设置</text>
+    <text class="subtitle">查看记录统计与数据设置</text>
   </view>
 
   <view class="user-card section-card">
@@ -42,6 +42,10 @@
       </view>
       <view class="setting-item" bindtap="exportData">
         <text class="setting-label">导出数据</text>
+        <text class="setting-arrow">›</text>
+      </view>
+      <view class="setting-item" bindtap="seedMockData">
+        <text class="setting-label">生成三年示例数据</text>
         <text class="setting-arrow">›</text>
       </view>
       <view class="setting-item" bindtap="about">

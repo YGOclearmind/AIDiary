@@ -1,11 +1,11 @@
 <view class="container">
   <view class="header">
-    <text class="title">AI 流水账</text>
-    <text class="subtitle">支持 AI 智能总结</text>
+    <text class="title">生活流水账</text>
+    <text class="subtitle">记录日常，整理灵感</text>
   </view>
 
   <view class="hero-card">
-    <view class="hero-badge">随时记录灵感与日常</view>
+    <view class="hero-badge">随手记下日常片段</view>
     <text class="hero-title">想到什么，就立刻记下来</text>
     <text class="hero-desc">通过文字速记，快速记录下当下的想法、待办事项和心情。</text>
   </view>
@@ -43,7 +43,7 @@
       <text class="date-label">记录日期</text>
       <picker mode="date" value="{{selectedRecordDate}}" bindchange="onRecordDateChange">
         <view class="date-picker-trigger">
-          <text class="date-value">{{selectedRecordDate}}</text>
+          <text class="date-value">{{recordDateLabel}}</text>
           <text class="date-arrow">▼</text>
         </view>
       </picker>
@@ -90,19 +90,13 @@
                 <text class="audio-record-title">语音记录</text>
                 <text class="audio-record-desc">{{item.audioDurationText || '时长未知'}}</text>
               </view>
-              <view wx:if="{{selectedRecordId === item._id}}" class="record-actions">
+              <view class="record-actions">
                 <view
                   class="audio-play-btn {{playingRecordId === item._id ? 'audio-play-btn-active' : ''}}"
                   data-id="{{item._id}}"
                   data-fileid="{{item.audioFileID}}"
                   catchtap="playAudio"
                 >{{playingRecordId === item._id ? '⏸' : '▶'}}</view>
-                <view class="action-btn" catchtap="editRecord" data-id="{{item._id}}">
-                  <text class="action-btn-icon">✏️</text>
-                </view>
-                <view class="action-btn action-btn-delete" catchtap="deleteRecord" data-id="{{item._id}}">
-                  <text class="action-btn-icon">×</text>
-                </view>
               </view>
             </view>
             <text class="audio-record-note">{{item.transcriptText || item.content}}</text>
@@ -111,14 +105,6 @@
           <view wx:else class="record-item-content" catchtap="toggleRecordActions" data-id="{{item._id}}">
             <view class="record-text-row">
               <text class="record-item-text">{{item.content}}</text>
-              <view wx:if="{{selectedRecordId === item._id}}" class="record-actions">
-                <view class="action-btn" catchtap="editRecord" data-id="{{item._id}}">
-                  <text class="action-btn-icon">✏️</text>
-                </view>
-                <view class="action-btn action-btn-delete" catchtap="deleteRecord" data-id="{{item._id}}">
-                  <text class="action-btn-icon">×</text>
-                </view>
-              </view>
             </view>
             <text class="record-item-time">{{item.createTime}}</text>
           </view>
@@ -130,5 +116,10 @@
         <text class="empty-desc">可以先打字记录下今天的想法、待办、心情或临时灵感。</text>
       </view>
     </scroll-view>
+  </view>
+
+  <view wx:if="{{selectedRecordId}}" class="record-bottom-actions">
+    <view class="record-bottom-btn" bindtap="editRecord">修改记录</view>
+    <view class="record-bottom-btn record-bottom-btn-delete" bindtap="deleteRecord">删除记录</view>
   </view>
 </view>

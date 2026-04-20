@@ -2,6 +2,16 @@ function formatRecordDate(date) {
   return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
 }
 
+function formatSummaryForModal(summaryItems, fallbackText) {
+  if (!Array.isArray(summaryItems) || !summaryItems.length) {
+    return fallbackText || '暂无可展示条目';
+  }
+  return summaryItems.map(item => {
+    const points = Array.isArray(item.points) ? item.points : [];
+    return `${item.title}：${points.join('；')}`;
+  }).join('\n');
+}
+
 Page({
   data: {
     summaryHistory: []
@@ -12,7 +22,7 @@ Page({
   },
 
   getDailySummary() {
-    wx.showLoading({ title: '生成日记中...' });
+    wx.showLoading({ title: '生成总结中...' });
     const start = new Date();
     start.setHours(0, 0, 0, 0);
     const end = new Date(start.getTime());
@@ -28,15 +38,17 @@ Page({
       success: function(res) {
         wx.hideLoading();
         if (res.result && res.result.success) {
+          const summaryItems = res.result.summaryItems || [];
+          const summaryText = res.result.summaryText || res.result.diary || '';
           wx.showModal({
-            title: '每日日记',
-            content: res.result.diary,
+            title: '每日条目总结',
+            content: formatSummaryForModal(summaryItems, summaryText),
             showCancel: false
           });
-          this.saveSummaryHistory('daily', formatRecordDate(start), res.result.diary);
+          this.saveSummaryHistory('daily', formatRecordDate(start), summaryText, summaryItems);
         } else {
           wx.showToast({
-            title: res.result.message || '生成日记失败',
+            title: res.result.message || '生成总结失败',
             icon: 'none'
           });
         }
@@ -44,7 +56,7 @@ Page({
       fail: function() {
         wx.hideLoading();
         wx.showToast({
-          title: '生成日记失败',
+          title: '生成总结失败',
           icon: 'none'
         });
       }
@@ -52,7 +64,7 @@ Page({
   },
 
   getWeeklySummary() {
-    wx.showLoading({ title: '生成周报中...' });
+    wx.showLoading({ title: '生成总结中...' });
     const now = new Date();
     const weekAgo = new Date();
     weekAgo.setDate(now.getDate() - 7);
@@ -69,15 +81,17 @@ Page({
       success: function(res) {
         wx.hideLoading();
         if (res.result && res.result.success) {
+          const summaryItems = res.result.summaryItems || [];
+          const summaryText = res.result.summaryText || res.result.weekly || '';
           wx.showModal({
-            title: '每周周报',
-            content: res.result.weekly,
+            title: '每周条目总结',
+            content: formatSummaryForModal(summaryItems, summaryText),
             showCancel: false
           });
-          this.saveSummaryHistory('weekly', `${formatRecordDate(weekAgo)} 至 ${formatRecordDate(now)}`, res.result.weekly);
+          this.saveSummaryHistory('weekly', `${formatRecordDate(weekAgo)} 至 ${formatRecordDate(now)}`, summaryText, summaryItems);
         } else {
           wx.showToast({
-            title: res.result.message || '生成周报失败',
+            title: res.result.message || '生成总结失败',
             icon: 'none'
           });
         }
@@ -85,14 +99,14 @@ Page({
       fail: function() {
         wx.hideLoading();
         wx.showToast({
-          title: '生成周报失败',
+          title: '生成总结失败',
           icon: 'none'
         });
       }
     });
   },
 
-  saveSummaryHistory(type, date, content) {
+  saveSummaryHistory(type, date, content, summaryItems = []) {
     const db = wx.cloud.database();
     const now = new Date();
     const timestamp = now.getTime();
@@ -102,6 +116,7 @@ Page({
         type: type,
         date: date,
         content: content,
+        summaryItems: summaryItems,
         timestamp: timestamp,
         createTime: now.toLocaleString()
       },
@@ -123,7 +138,10 @@ Page({
       .get({
         success: function(res) {
           this.setData({
-            summaryHistory: res.data
+            summaryHistory: res.data.map(item => ({
+              ...item,
+              summaryItems: Array.isArray(item.summaryItems) ? item.summaryItems : []
+            }))
           });
         }.bind(this),
         fail: function() {

@@ -1,0 +1,14 @@
+{
+  "name": "seedMockRecords",
+  "version": "1.0.0",
+  "description": "生成三年虚拟数据并初始化分类库",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

@@ -376,8 +376,8 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 10rpx;
-  margin-left: 10rpx;
+  gap: 8rpx;
+  margin-left: 8rpx;
   flex-shrink: 0;
   width: auto;
 }
@@ -392,9 +392,9 @@
 
 .audio-play-btn {
   flex: 0 0 auto;
-  width: 96rpx;
-  min-width: 96rpx;
-  height: 54rpx;
+  width: 88rpx;
+  min-width: 88rpx;
+  height: 50rpx;
   margin: 0;
   padding: 0 18rpx;
   border-radius: 999rpx;
@@ -404,6 +404,37 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.record-bottom-actions {
+  position: sticky;
+  bottom: 20rpx;
+  z-index: 8;
+  margin-top: 8rpx;
+  display: flex;
+  gap: 14rpx;
+  padding: 16rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1rpx solid #efe5ff;
+  box-shadow: 0 14rpx 28rpx rgba(60, 46, 90, 0.12);
+}
+
+.record-bottom-btn {
+  flex: 1;
+  height: 76rpx;
+  border-radius: 999rpx;
+  background: #f3ecff;
+  color: #564a70;
+  font-size: 26rpx;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.record-bottom-btn-delete {
+  background: #ffeff3;
+  color: #b24f67;
 }
 
 .audio-play-btn-active {
