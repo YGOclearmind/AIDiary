@@ -9,6 +9,12 @@
       <text class="section-title">快速生成</text>
       <text class="section-tag">AI 驱动</text>
     </view>
+    <view class="year-selector">
+      <text class="year-label">年报年份</text>
+      <picker mode="selector" range="{{yearOptions}}" value="{{selectedYearIndex}}" bindchange="onYearChange">
+        <view class="year-picker-value">{{selectedYear}}年</view>
+      </picker>
+    </view>
     <view class="summary-buttons">
       <button class="summary-btn summary-btn-daily" bindtap="getDailySummary">
         <text class="summary-btn-icon">📅</text>
@@ -19,6 +25,11 @@
         <text class="summary-btn-icon">📊</text>
         <text class="summary-btn-text">每周条目总结</text>
         <text class="summary-btn-desc">按分类陈述当周碎碎念</text>
+      </button>
+      <button class="summary-btn summary-btn-yearly" bindtap="getYearlySummary">
+        <text class="summary-btn-icon">🧭</text>
+        <text class="summary-btn-text">年度条目总结</text>
+        <text class="summary-btn-desc">提取全年主轴并做压缩总结</text>
       </button>
     </view>
   </view>
@@ -32,7 +43,7 @@
       <view wx:if="{{summaryHistory.length > 0}}">
         <view class="summary-item" wx:for="{{summaryHistory}}" wx:key="_id">
           <view class="summary-item-header">
-            <text class="summary-item-title">{{item.type === 'daily' ? '每日条目总结' : '每周条目总结'}}</text>
+            <text class="summary-item-title">{{item.typeLabel}}</text>
             <text class="summary-item-date">{{item.date}}</text>
           </view>
           <view wx:if="{{item.summaryItems.length > 0}}">

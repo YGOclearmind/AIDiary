@@ -1,5 +1,12 @@
 const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
 const recorderManager = wx.getRecorderManager();
+const CATEGORY_RULES = [
+  { name: '美食', keywords: ['吃', '喝', '咖啡', '奶茶', '火锅', '外卖', '美团', '餐厅', '早餐', '午餐', '晚餐', '甜品'] },
+  { name: '电影', keywords: ['电影', '影院', '追剧', '剧集', '综艺', '纪录片'] },
+  { name: '学习', keywords: ['学习', '复习', '课程', '读书', '笔记', '考试', '刷题', '作业'] },
+  { name: '工作', keywords: ['工作', '需求', '项目', '开会', '汇报', '客户', '加班'] },
+  { name: '运动', keywords: ['运动', '跑步', '健身', '游泳', '骑行', '瑜伽', '羽毛球', '篮球'] }
+];
 
 function padNumber(value) {
   return value < 10 ? `0${value}` : `${value}`;
@@ -30,6 +37,20 @@ function getRecordDateLabel(value) {
   }
   const today = formatPickerDate(new Date());
   return value === today ? '今日' : value;
+}
+
+function inferCategory(text) {
+  const source = String(text || '').toLowerCase();
+  if (!source) {
+    return '其他';
+  }
+  for (const rule of CATEGORY_RULES) {
+    const matched = rule.keywords.some(keyword => source.includes(String(keyword).toLowerCase()));
+    if (matched) {
+      return rule.name;
+    }
+  }
+  return '其他';
 }
 
 Page({
@@ -496,6 +517,7 @@ Page({
     const timestamp = recordDate.getTime();
     const date = formatRecordDate(recordDate);
     const monthDay = formatMonthDay(recordDate);
+    const category = inferCategory(extra.transcript || content);
 
     db.collection('records').add({
       data: {
@@ -505,6 +527,7 @@ Page({
         timestamp: timestamp,
         year: recordDate.getFullYear(),
         monthDay: monthDay,
+        category: category,
         recordType: extra.recordType || 'text',
         audioFileID: extra.audioFileID || '',
         audioDuration: extra.audioDuration || 0,

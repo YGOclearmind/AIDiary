@@ -44,6 +44,18 @@ function matchCategoryName(text, categories) {
   return '其他';
 }
 
+function resolveCategoryName(record, categories) {
+  const savedCategory = normalizeText(record && record.category);
+  if (savedCategory) {
+    const exists = categories.some(category => category.name === savedCategory);
+    if (exists) {
+      return savedCategory;
+    }
+  }
+  const text = getRecordText(record);
+  return matchCategoryName(text, categories);
+}
+
 function uniquePoints(records, limit) {
   const points = [];
   const seen = new Set();
@@ -75,7 +87,7 @@ function buildSummaryItems(records, categories, prefix) {
     if (!text) {
       return;
     }
-    const categoryName = matchCategoryName(text, categories);
+    const categoryName = resolveCategoryName(record, categories);
     if (!grouped[categoryName]) {
       grouped[categoryName] = [];
     }
