@@ -67,4 +67,17 @@
       </view>
     </scroll-view>
   </view>
+
+  <!-- 自定义总结弹窗 -->
+  <view wx:if="{{showSummaryModal}}" class="summary-modal-mask" bindtap="closeSummaryModal">
+    <view class="summary-modal-content" catchtap="preventTap">
+      <view class="summary-modal-header">
+        <text class="summary-modal-title">{{summaryModalTitle}}</text>
+        <view class="summary-modal-close" bindtap="closeSummaryModal">×</view>
+      </view>
+      <scroll-view class="summary-modal-body" scroll-y>
+        <text class="summary-modal-text">{{summaryModalContent}}</text>
+      </scroll-view>
+    </view>
+  </view>
 </view>

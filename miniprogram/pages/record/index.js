@@ -75,7 +75,10 @@ Page({
     inspirationError: '',
     playingRecordId: '',
     isDevtools: false,
-    selectedRecordId: ''
+    selectedRecordId: '',
+    showSummaryModal: false,
+    summaryModalTitle: '',
+    summaryModalContent: ''
   },
 
   onLoad() {
@@ -601,10 +604,10 @@ Page({
       success: function(res) {
         wx.hideLoading();
         if (res.result && res.result.success) {
-          wx.showModal({
-            title: '每日日记',
-            content: res.result.diary,
-            showCancel: false
+          this.setData({
+            showSummaryModal: true,
+            summaryModalTitle: '今日碎碎念',
+            summaryModalContent: res.result.diary
           });
         } else {
           wx.showToast({
@@ -612,7 +615,7 @@ Page({
             icon: 'none'
           });
         }
-      },
+      }.bind(this),
       fail: function() {
         wx.hideLoading();
         wx.showToast({
@@ -648,10 +651,10 @@ Page({
       success: function(res) {
         wx.hideLoading();
         if (res.result && res.result.success) {
-          wx.showModal({
-            title: '每周周报',
-            content: res.result.weekly,
-            showCancel: false
+          this.setData({
+            showSummaryModal: true,
+            summaryModalTitle: '本周碎碎念',
+            summaryModalContent: res.result.weekly
           });
         } else {
           wx.showToast({
@@ -659,7 +662,7 @@ Page({
             icon: 'none'
           });
         }
-      },
+      }.bind(this),
       fail: function() {
         wx.hideLoading();
         wx.showToast({
@@ -769,5 +772,16 @@ Page({
         }
       }
     });
+  },
+
+  closeSummaryModal() {
+    this.setData({
+      showSummaryModal: false
+    });
+  },
+
+
+
+  preventTap() {
   }
 });

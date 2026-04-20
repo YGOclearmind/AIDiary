@@ -39,7 +39,10 @@ Page({
     summaryHistory: [],
     yearOptions: [],
     selectedYear: new Date().getFullYear(),
-    selectedYearIndex: 0
+    selectedYearIndex: 0,
+    showSummaryModal: false,
+    summaryModalTitle: '',
+    summaryModalContent: ''
   },
 
   onLoad() {
@@ -81,10 +84,10 @@ Page({
         if (res.result && res.result.success) {
           const summaryItems = res.result.summaryItems || [];
           const summaryText = res.result.summaryText || res.result.diary || '';
-          wx.showModal({
-            title: '每日条目总结',
-            content: formatSummaryForModal(summaryItems, summaryText),
-            showCancel: false
+          this.setData({
+            showSummaryModal: true,
+            summaryModalTitle: '今日碎碎念',
+            summaryModalContent: summaryText || '暂无内容'
           });
           this.saveSummaryHistory('daily', formatRecordDate(start), summaryText, summaryItems);
         } else {
@@ -124,10 +127,10 @@ Page({
         if (res.result && res.result.success) {
           const summaryItems = res.result.summaryItems || [];
           const summaryText = res.result.summaryText || res.result.weekly || '';
-          wx.showModal({
-            title: '每周条目总结',
-            content: formatSummaryForModal(summaryItems, summaryText),
-            showCancel: false
+          this.setData({
+            showSummaryModal: true,
+            summaryModalTitle: '本周碎碎念',
+            summaryModalContent: summaryText || '暂无内容'
           });
           this.saveSummaryHistory('weekly', `${formatRecordDate(weekAgo)} 至 ${formatRecordDate(now)}`, summaryText, summaryItems);
         } else {
@@ -161,10 +164,10 @@ Page({
         if (res.result && res.result.success) {
           const summaryItems = res.result.summaryItems || [];
           const summaryText = res.result.summaryText || res.result.yearly || '';
-          wx.showModal({
-            title: '年度条目总结',
-            content: formatSummaryForModal(summaryItems, summaryText),
-            showCancel: false
+          this.setData({
+            showSummaryModal: true,
+            summaryModalTitle: `${year}年碎碎念`,
+            summaryModalContent: summaryText || '暂无内容'
           });
           this.saveSummaryHistory('yearly', `${year}年`, summaryText, summaryItems);
         } else {
@@ -243,5 +246,16 @@ Page({
         }
       });
     }
+  },
+
+  closeSummaryModal() {
+    this.setData({
+      showSummaryModal: false
+    });
+  },
+
+
+
+  preventTap() {
   }
 });
