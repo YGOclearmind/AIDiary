@@ -1,4 +1,5 @@
 const cloud = require('wx-server-sdk');
+const axios = require('axios');
 
 cloud.init({
   env: cloud.DYNAMIC_CURRENT_ENV
@@ -7,16 +8,9 @@ cloud.init({
 const db = cloud.database();
 const _ = db.command;
 
-const DEFAULT_CATEGORIES = [
-  { code: 'food', name: '美食', keywords: ['吃', '喝', '咖啡', '奶茶', '火锅', '外卖', '美团', '餐厅', '早餐', '晚餐', '午餐', '甜品'] },
-  { code: 'movie', name: '电影', keywords: ['电影', '影院', '剧', '综艺', '追剧', '票房', '纪录片'] },
-  { code: 'study', name: '学习', keywords: ['学习', '复习', '课程', '读书', '笔记', '考试', '刷题', '作业'] },
-  { code: 'work', name: '工作', keywords: ['工作', '开会', '需求', '项目', '客户', '加班', '汇报', '职场'] },
-  { code: 'sport', name: '运动', keywords: ['运动', '跑步', '健身', '游泳', '骑行', '瑜伽', '羽毛球', '篮球'] },
-  { code: 'other', name: '其他', keywords: [] }
-];
-
-const STOP_WORDS = ['今天', '感觉', '有点', '真的', '一个', '一下', '这个', '那个', '然后', '还是', '就是'];
+// 从配置文件读取AI API信息
+const config = require('./config.js');
+const { apiKey, apiUrl, epId, modelName } = config.aiConfig;
 
 function normalizeText(text) {
   return String(text || '').trim();
@@ -32,198 +26,84 @@ function getRecordText(record) {
   return normalizeText(record.content);
 }
 
-function matchCategoryName(text, categories) {
-  const lowerText = normalizeText(text).toLowerCase();
-  for (const category of categories) {
-    if (category.code === 'other') {
-      continue;
-    }
-    const hit = (category.keywords || []).some(keyword => lowerText.includes(String(keyword).toLowerCase()));
-    if (hit) {
-      return category.name;
-    }
-  }
-  return '其他';
-}
-
-function resolveCategoryName(record, categories) {
-  const savedCategory = normalizeText(record && record.category);
-  if (savedCategory) {
-    const exists = categories.some(category => category.name === savedCategory);
-    if (exists) {
-      return savedCategory;
-    }
-  }
-  const text = getRecordText(record);
-  return matchCategoryName(text, categories);
-}
-
-function getRecordMonth(record) {
-  const timestamp = Number(record && record.timestamp);
-  if (timestamp) {
-    const date = new Date(timestamp);
-    if (!Number.isNaN(date.getTime())) {
-      return date.getMonth() + 1;
-    }
-  }
-  const dateText = normalizeText(record && record.date);
-  const matched = dateText.match(/^(\d{4})[/-](\d{1,2})[/-]\d{1,2}$/);
-  if (matched) {
-    return Number(matched[2]) || 0;
-  }
-  return 0;
-}
-
-function getRecordYear(record) {
-  const year = Number(record && record.year);
-  if (year) {
-    return year;
-  }
-  const timestamp = Number(record && record.timestamp);
-  if (timestamp) {
-    const date = new Date(timestamp);
-    if (!Number.isNaN(date.getTime())) {
-      return date.getFullYear();
-    }
-  }
-  const dateText = normalizeText(record && record.date);
-  const matched = dateText.match(/^(\d{4})[/-]\d{1,2}[/-]\d{1,2}$/);
-  if (matched) {
-    return Number(matched[1]) || 0;
-  }
-  return 0;
-}
-
-function getRecordQuarter(record) {
-  const month = getRecordMonth(record);
-  if (!month) {
-    return 0;
-  }
-  return Math.ceil(month / 3);
-}
-
-function compactSentence(text, limit) {
-  const source = normalizeText(text).replace(/\s+/g, '');
-  if (!source) {
-    return '';
-  }
-  if (source.length <= limit) {
-    return source;
-  }
-  return `${source.slice(0, limit)}...`;
-}
-
-function extractTopTopics(records, limit) {
-  const scoreMap = {};
-  records.forEach(record => {
+// 调用AI API生成年报
+async function generateYearlyWithAI(records, year) {
+  // 提取记录内容
+  const recordContents = records.map(record => {
     const text = getRecordText(record);
-    if (!text) {
-      return;
-    }
-    const chunks = text
-      .split(/[，,。；;！!？?\n、]/)
-      .map(item => normalizeText(item))
-      .filter(item => item.length >= 2 && item.length <= 12);
-    chunks.forEach(chunk => {
-      if (STOP_WORDS.includes(chunk)) {
-        return;
-      }
-      scoreMap[chunk] = (scoreMap[chunk] || 0) + 1;
-    });
-  });
-  const sorted = Object.keys(scoreMap).sort((a, b) => {
-    const scoreDiff = scoreMap[b] - scoreMap[a];
-    if (scoreDiff !== 0) {
-      return scoreDiff;
-    }
-    return b.length - a.length;
-  });
-  if (sorted.length) {
-    return sorted.slice(0, limit);
+    return text ? `- ${text}` : '';
+  }).filter(Boolean).join('\n');
+  
+  if (!recordContents) {
+    return `${year}年无有效记录`;
   }
-  const backup = [];
-  const seen = new Set();
-  records.forEach(record => {
-    const sentence = compactSentence(getRecordText(record), 10);
-    if (!sentence || seen.has(sentence)) {
-      return;
-    }
-    seen.add(sentence);
-    backup.push(sentence);
-  });
-  return backup.slice(0, limit);
-}
+  
+  // 构建提示词
+  const prompt = `请用自然流畅的"碎碎念"风格，将下面的流水账记录整理成分类清晰的年度总结。
 
-function getQuarterFocus(records) {
-  const quarterCount = { 1: 0, 2: 0, 3: 0, 4: 0 };
-  records.forEach(record => {
-    const quarter = getRecordQuarter(record);
-    if (quarterCount[quarter] !== undefined) {
-      quarterCount[quarter] += 1;
-    }
-  });
-  let bestQuarter = 0;
-  let bestCount = 0;
-  Object.keys(quarterCount).forEach(key => {
-    const value = quarterCount[key];
-    if (value > bestCount) {
-      bestCount = value;
-      bestQuarter = Number(key);
-    }
-  });
-  if (!bestQuarter || !bestCount) {
-    return '全年分布较均匀';
-  }
-  return `Q${bestQuarter}投入最集中`;
-}
+严格要求：
+1. 语言自然流畅，适当使用口语表达，避免过于正式
+2. 适当使用语气词（哇、嘿、哈、诶等）和感叹词，不要过度
+3. 按类别分组，每个类别用 emoji 表情作为标识，类别名称简洁明了
+4. 每个类别下的条目简洁明了，每条不超过25字
+5. 可以适当加入简短的个人感受，增加趣味性
+6. 不要写成日记形式，要写成条目的形式
+7. 直接开始分类总结，不要有引言或开场白
+8. 不同类别之间必须空一行，确保分类清晰
+9. 必须按照以下格式输出：
+   
+   🍽️ 类别名称
+   - 条目1
+   - 条目2
+   
+   💼 类别名称
+   - 条目1
+   - 条目2
+   
+   🏃 类别名称
+   - 条目1
+   - 条目2
 
-function buildCategoryDigest(records, categoryName) {
-  const count = records.length;
-  const topics = extractTopTopics(records, 3);
-  return {
-    category: categoryName,
-    title: categoryName,
-    count,
-    points: [
-      `共${count}条`,
-      topics.length ? topics.join('、') : '暂无明显主题'
-    ]
-  };
-}
+年份：${year}
 
-function toSummaryText(items) {
-  return items
-    .map(item => {
-      return `${item.title}：${(item.points || []).join('；')}`;
-    })
-    .join('\n');
-}
+流水账记录：
+${recordContents}
 
-async function loadCategories() {
+总结（碎碎念风格，分类清晰，必须按指定格式输出）：`;
+  
   try {
-    const res = await db.collection('categoryKnowledge')
-      .where({
-        enabled: _.neq(false)
-      })
-      .limit(50)
-      .get();
-    if (!res.data.length) {
-      return DEFAULT_CATEGORIES;
-    }
-    const list = res.data
-      .map(item => ({
-        code: item.code || normalizeText(item.name).toLowerCase(),
-        name: item.name || '',
-        keywords: Array.isArray(item.keywords) ? item.keywords : []
-      }))
-      .filter(item => item.name);
-    const hasOther = list.some(item => item.name === '其他');
-    if (!hasOther) {
-      list.push({ code: 'other', name: '其他', keywords: [] });
-    }
-    return list.length ? list : DEFAULT_CATEGORIES;
+    // 调用AI API
+    const response = await axios.post(apiUrl, {
+      model: modelName,
+      messages: [
+        {
+          role: 'system',
+          content: '你是一个专业的年报撰写助手，擅长将一年的零散记录整理成有条理、有风格的年度总结。'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      max_tokens: 500,
+      temperature: 0.7
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'x-volcengine-ep-id': epId
+      },
+      timeout: 60000
+    });
+    
+    // 提取AI生成的内容
+    const yearlyContent = response.data.choices[0].message.content;
+    return yearlyContent;
   } catch (error) {
-    return DEFAULT_CATEGORIES;
+    console.error('AI API调用失败:', error);
+    // 降级处理：使用简单的总结
+    const simpleSummary = recordContents.split('\n').map(line => line.replace(/^- /, '• ')).join('\n');
+    return `${year}年总结：\n\n${simpleSummary}`;
   }
 }
 
@@ -268,6 +148,31 @@ async function fetchAllRecords(openid, maxPages = 20, pageSize = 100) {
   return list;
 }
 
+function getRecordYear(record) {
+  const year = Number(record && record.year);
+  if (year) {
+    return year;
+  }
+  const timestamp = Number(record && record.timestamp);
+  if (timestamp) {
+    const date = new Date(timestamp);
+    if (!Number.isNaN(date.getTime())) {
+      return date.getFullYear();
+    }
+  }
+  const dateText = normalizeText(record && record.date);
+  const matched = dateText.match(/^(\d{4})[/-]\d{1,2}[/-]\d{1,2}$/);
+  if (matched) {
+    return Number(matched[1]) || 0;
+  }
+  return 0;
+}
+
+// 增加云函数超时时间
+exports.config = {
+  timeout: 60000
+};
+
 exports.main = async (event) => {
   try {
     const now = new Date();
@@ -276,7 +181,6 @@ exports.main = async (event) => {
     const end = new Date(year, 11, 31, 23, 59, 59, 999);
     const wxContext = cloud.getWXContext();
     const openid = wxContext.OPENID;
-    const categories = await loadCategories();
 
     let records = await fetchRecordsByTimestamp(openid, start.getTime(), end.getTime());
     if (!records.length) {
@@ -293,44 +197,28 @@ exports.main = async (event) => {
       };
     }
 
-    const groupedMap = {};
-    records.forEach(record => {
-      const categoryName = resolveCategoryName(record, categories);
-      if (!groupedMap[categoryName]) {
-        groupedMap[categoryName] = [];
-      }
-      groupedMap[categoryName].push(record);
-    });
+    // 使用AI生成年报
+    const yearlyContent = await generateYearlyWithAI(records, year);
 
-    const groupedList = Object.keys(groupedMap).map(name => ({
-      category: name,
-      records: groupedMap[name]
-    }));
-    groupedList.sort((a, b) => b.records.length - a.records.length);
-
-    const summaryItems = groupedList.map(item => buildCategoryDigest(item.records, item.category));
-    const summaryText = toSummaryText(summaryItems);
-
+    // 保存年报到数据库
     await db.collection('diaries').add({
       data: {
         type: 'yearly',
         year,
         startDate: start.toLocaleString(),
         endDate: end.toLocaleString(),
-        content: summaryText,
-        summaryItems,
+        content: yearlyContent,
         createTime: new Date().toLocaleString()
       }
     });
 
     return {
       success: true,
-      summaryText,
-      summaryItems,
-      yearly: summaryText,
+      yearly: yearlyContent,
       year
     };
   } catch (error) {
+    console.error('生成年报失败:', error);
     return {
       success: false,
       message: '生成年报失败',

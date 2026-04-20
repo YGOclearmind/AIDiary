@@ -1,4 +1,5 @@
 const cloud = require('wx-server-sdk');
+const axios = require('axios');
 
 cloud.init({
   env: cloud.DYNAMIC_CURRENT_ENV
@@ -7,14 +8,9 @@ cloud.init({
 const db = cloud.database();
 const _ = db.command;
 
-const DEFAULT_CATEGORIES = [
-  { code: 'food', name: '美食', keywords: ['吃', '喝', '咖啡', '奶茶', '火锅', '外卖', '美团', '餐厅', '早餐', '晚餐', '午餐', '甜品'] },
-  { code: 'movie', name: '电影', keywords: ['电影', '影院', '剧', '综艺', '追剧', '票房', '纪录片'] },
-  { code: 'study', name: '学习', keywords: ['学习', '复习', '课程', '读书', '笔记', '考试', '刷题', '作业'] },
-  { code: 'work', name: '工作', keywords: ['工作', '开会', '需求', '项目', '客户', '加班', '汇报', '职场'] },
-  { code: 'sport', name: '运动', keywords: ['运动', '跑步', '健身', '游泳', '骑行', '瑜伽', '羽毛球', '篮球'] },
-  { code: 'other', name: '其他', keywords: [] }
-];
+// 从配置文件读取AI API信息
+const config = require('./config.js');
+const { apiKey, apiUrl, epId, modelName } = config.aiConfig;
 
 function normalizeText(text) {
   return String(text || '').trim();
@@ -30,121 +26,78 @@ function getRecordText(record) {
   return normalizeText(record.content);
 }
 
-function matchCategoryName(text, categories) {
-  const lowerText = text.toLowerCase();
-  for (const category of categories) {
-    if (category.code === 'other') {
-      continue;
-    }
-    const hit = (category.keywords || []).some(keyword => lowerText.includes(String(keyword).toLowerCase()));
-    if (hit) {
-      return category.name;
-    }
-  }
-  return '其他';
-}
-
-function resolveCategoryName(record, categories) {
-  const savedCategory = normalizeText(record && record.category);
-  if (savedCategory) {
-    const exists = categories.some(category => category.name === savedCategory);
-    if (exists) {
-      return savedCategory;
-    }
-  }
-  const text = getRecordText(record);
-  return matchCategoryName(text, categories);
-}
-
-function uniquePoints(records, limit) {
-  const points = [];
-  const seen = new Set();
-  for (const record of records) {
+// 调用AI API生成条目总结
+async function generateDiaryWithAI(records, date) {
+  // 提取记录内容
+  const recordContents = records.map(record => {
     const text = getRecordText(record);
-    if (!text) {
-      continue;
-    }
-    const point = text.length > 30 ? `${text.slice(0, 30)}...` : text;
-    if (seen.has(point)) {
-      continue;
-    }
-    seen.add(point);
-    points.push(point);
-    if (points.length >= limit) {
-      break;
-    }
+    return text ? `- ${text}` : '';
+  }).filter(Boolean).join('\n');
+  
+  if (!recordContents) {
+    return '今日无有效记录';
   }
-  return points;
-}
+  
+  // 构建提示词
+  const prompt = `请用自然流畅的"碎碎念"风格，将下面的流水账记录整理成分类清晰的条目总结。
 
-function buildSummaryItems(records, categories, prefix) {
-  const grouped = {};
-  categories.forEach(category => {
-    grouped[category.name] = [];
-  });
-  records.forEach(record => {
-    const text = getRecordText(record);
-    if (!text) {
-      return;
-    }
-    const categoryName = resolveCategoryName(record, categories);
-    if (!grouped[categoryName]) {
-      grouped[categoryName] = [];
-    }
-    grouped[categoryName].push(record);
-  });
-  return Object.keys(grouped)
-    .map(categoryName => {
-      const categoryRecords = grouped[categoryName];
-      if (!categoryRecords || !categoryRecords.length) {
-        return null;
-      }
-      return {
-        category: categoryName,
-        title: `${prefix}${categoryName}`,
-        count: categoryRecords.length,
-        points: uniquePoints(categoryRecords, 4)
-      };
-    })
-    .filter(Boolean);
-}
+要求：
+1. 语言自然流畅，适当使用口语表达，避免过于正式
+2. 适当使用语气词（哇、嘿、哈、诶等）和感叹词，不要过度
+3. 按类别分组，每个类别用 emoji 表情作为标识，类别名称简洁明了
+4. 每个类别下的条目简洁明了，每条不超过25字
+5. 可以适当加入简短的个人感受，增加趣味性
+6. 不要写成日记形式，要写成条目的形式
+7. 直接开始分类总结，不要有引言或开场白
+8. 不同类别之间必须换行，确保分类清晰，一定要换行
 
-function toSummaryText(items) {
-  return items
-    .map(item => {
-      const lines = item.points.map(point => `- ${point}`).join('\n');
-      return `${item.title}（${item.count}条）\n${lines}`;
-    })
-    .join('\n\n');
-}
+日期：${date}
 
-async function loadCategories() {
+流水账记录：
+${recordContents}
+
+总结（碎碎念风格，分类清晰）：`;
+  
   try {
-    const res = await db.collection('categoryKnowledge')
-      .where({
-        enabled: _.neq(false)
-      })
-      .limit(50)
-      .get();
-    if (!res.data.length) {
-      return DEFAULT_CATEGORIES;
-    }
-    const list = res.data
-      .map(item => ({
-        code: item.code || normalizeText(item.name).toLowerCase(),
-        name: item.name || '',
-        keywords: Array.isArray(item.keywords) ? item.keywords : []
-      }))
-      .filter(item => item.name);
-    const hasOther = list.some(item => item.name === '其他');
-    if (!hasOther) {
-      list.push({ code: 'other', name: '其他', keywords: [] });
-    }
-    return list.length ? list : DEFAULT_CATEGORIES;
+    // 调用AI API
+    const response = await axios.post(apiUrl, {
+      model: modelName,
+      messages: [
+        {
+          role: 'system',
+          content: '你是一个专业的日记撰写助手，擅长将零散的记录整理成有条理、有情感的日记。'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      max_tokens: 500,
+      temperature: 0.7
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'x-volcengine-ep-id': epId
+      },
+      timeout: 60000
+    });
+    
+    // 提取AI生成的内容
+    const diaryContent = response.data.choices[0].message.content;
+    return diaryContent;
   } catch (error) {
-    return DEFAULT_CATEGORIES;
+    console.error('AI API调用失败:', error);
+    // 降级处理：使用简单的总结
+    const simpleSummary = recordContents.split('\n').map(line => line.replace(/^- /, '• ')).join('\n');
+    return `今日碎碎念：\n\n${simpleSummary}\n\n今天就酱紫啦~`;
   }
 }
+
+// 增加云函数超时时间
+exports.config = {
+  timeout: 60000
+};
 
 exports.main = async (event, context) => {
   try {
@@ -152,7 +105,6 @@ exports.main = async (event, context) => {
     const wxContext = cloud.getWXContext();
     const openid = wxContext.OPENID;
 
-    const categories = await loadCategories();
     let records;
     if (startTimestamp && endTimestamp) {
       records = await db.collection('records')
@@ -186,29 +138,28 @@ exports.main = async (event, context) => {
       };
     }
 
-    const summaryItems = buildSummaryItems(records.data, categories, '今日');
-    const summaryText = toSummaryText(summaryItems);
+    // 使用AI生成条目总结
+    const summaryContent = await generateDiaryWithAI(records.data, date);
 
+    // 保存总结到数据库
     await db.collection('diaries').add({
       data: {
         type: 'daily',
         date: date,
-        content: summaryText,
-        summaryItems,
+        content: summaryContent,
         createTime: new Date().toLocaleString()
       }
     });
 
     return {
       success: true,
-      diary: summaryText,
-      summaryText,
-      summaryItems
+      diary: summaryContent
     };
   } catch (error) {
+    console.error('生成条目总结失败:', error);
     return {
       success: false,
-      message: '生成每日条目总结失败',
+      message: '生成条目总结失败',
       error: error.message
     };
   }
