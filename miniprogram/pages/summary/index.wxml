@@ -41,22 +41,19 @@
     </view>
     <scroll-view class="summary-scroll" scroll-y enhanced show-scrollbar="false">
       <view wx:if="{{summaryHistory.length > 0}}">
-        <view class="summary-item" wx:for="{{summaryHistory}}" wx:key="_id">
+        <view class="summary-item" wx:for="{{summaryHistory}}" wx:key="_id" bindtap="openSummaryDetail" data-id="{{item._id}}">
           <view class="summary-item-header">
-            <text class="summary-item-title">{{item.typeLabel}}</text>
-            <text class="summary-item-date">{{item.date}}</text>
+            <text class="summary-item-title">{{item.historyTitle}}</text>
+            <text class="summary-item-date">点击查看</text>
           </view>
-          <view wx:if="{{item.summaryItems.length > 0}}">
-            <view wx:for="{{item.summaryItems}}" wx:key="title" class="summary-category-block">
-              <text class="summary-category-title">{{item.title}}</text>
-              <text class="summary-item-content">{{item.points.join('；')}}</text>
-            </view>
-          </view>
-          <text wx:else class="summary-item-content">{{item.content}}</text>
           <view class="summary-item-footer">
-            <button class="copy-btn" bindtap="copySummary" data-id="{{item._id}}">
+            <button class="copy-btn" catchtap="copySummary" data-id="{{item._id}}">
               <text class="copy-btn-icon">📋</text>
               <text class="copy-btn-text">复制</text>
+            </button>
+            <button class="delete-btn" catchtap="deleteSummary" data-id="{{item._id}}">
+              <text class="copy-btn-icon">🗑</text>
+              <text class="copy-btn-text">删除</text>
             </button>
           </view>
         </view>
@@ -68,16 +65,4 @@
     </scroll-view>
   </view>
 
-  <!-- 自定义总结弹窗 -->
-  <view wx:if="{{showSummaryModal}}" class="summary-modal-mask" bindtap="closeSummaryModal">
-    <view class="summary-modal-content" catchtap="preventTap">
-      <view class="summary-modal-header">
-        <text class="summary-modal-title">{{summaryModalTitle}}</text>
-        <view class="summary-modal-close" bindtap="closeSummaryModal">×</view>
-      </view>
-      <scroll-view class="summary-modal-body" scroll-y>
-        <text class="summary-modal-text">{{summaryModalContent}}</text>
-      </scroll-view>
-    </view>
-  </view>
 </view>

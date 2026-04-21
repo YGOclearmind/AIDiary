@@ -2,7 +2,8 @@
   "pages": [
     "pages/record/index",
     "pages/summary/index",
-    "pages/mine/index"
+    "pages/mine/index",
+    "pages/report/index"
   ],
   "window": {
     "backgroundColor": "#F4F8FF",

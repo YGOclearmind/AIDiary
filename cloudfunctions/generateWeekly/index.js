@@ -16,6 +16,126 @@ function normalizeText(text) {
   return String(text || '').trim();
 }
 
+function normalizeCategoryName(raw, fallback) {
+  const text = normalizeText(raw)
+    .replace(/^[^\u4e00-\u9fa5A-Za-z0-9]+/, '')
+    .replace(/[^\u4e00-\u9fa5A-Za-z0-9]+$/, '');
+  if (!text) {
+    return fallback || '其他';
+  }
+  if (text.includes('游戏')) {
+    return '游戏';
+  }
+  if (text.includes('休闲') || text.includes('娱乐')) {
+    return '游戏';
+  }
+  if (text.includes('状态') || text.includes('心情') || text.includes('情绪')) {
+    return '其他';
+  }
+  return text;
+}
+
+function looksLikeSubTitle(segment) {
+  const clean = normalizeText(segment);
+  if (!clean) {
+    return false;
+  }
+  if (/[，。！？?!.]/.test(clean)) {
+    return false;
+  }
+  if (clean.length > 12) {
+    return false;
+  }
+  return /(状态|日常|游戏|娱乐|学习|工作|美食|电影|运动|社交|健康)/.test(clean);
+}
+
+function appendGrouped(grouped, title, detail) {
+  const name = normalizeCategoryName(title, '其他');
+  const content = normalizeText(detail);
+  if (!content) {
+    return;
+  }
+  if (!grouped[name]) {
+    grouped[name] = [];
+  }
+  if (!grouped[name].includes(content)) {
+    grouped[name].push(content);
+  }
+}
+
+function splitAndAppend(grouped, baseTitle, rawDetail) {
+  const detail = normalizeText(rawDetail);
+  if (!detail) {
+    return;
+  }
+  const segments = detail.split(/[；;]+/).map(item => normalizeText(item)).filter(Boolean);
+  if (segments.length <= 1) {
+    appendGrouped(grouped, baseTitle, detail);
+    return;
+  }
+  let currentTitle = normalizeCategoryName(baseTitle, '其他');
+  for (const seg of segments) {
+    const inline = seg.match(/^(.{1,12}?)(?:\s*[:：]\s*)(.+)$/);
+    if (inline) {
+      currentTitle = normalizeCategoryName(inline[1], currentTitle);
+      appendGrouped(grouped, currentTitle, inline[2]);
+      continue;
+    }
+    const cleaned = seg.replace(/^[^\u4e00-\u9fa5A-Za-z0-9]+/, '').trim();
+    if (looksLikeSubTitle(cleaned)) {
+      currentTitle = normalizeCategoryName(cleaned, currentTitle);
+      continue;
+    }
+    appendGrouped(grouped, currentTitle, seg);
+  }
+}
+
+function parseAiTextToSummaryItems(text) {
+  const source = normalizeText(text);
+  if (!source) {
+    return [];
+  }
+  const KNOWN_TITLES = ['美食', '电影', '学习', '工作', '运动', '休闲娱乐', '精神状态', '健康', '社交', '其他'];
+  const normalizeTitle = (raw) => normalizeText(raw)
+    .replace(/^[^\u4e00-\u9fa5A-Za-z0-9]+/, '')
+    .replace(/[^\u4e00-\u9fa5A-Za-z0-9]+$/, '')
+    .trim();
+  const lines = source
+    .split('\n')
+    .map(line => normalizeText(line))
+    .filter(Boolean);
+  const grouped = {};
+  for (const line of lines) {
+    const clean = line.replace(/^[•\-]\s*/, '').trim();
+    const match = clean.match(/^(.{1,24}?)(?:\s*[:：]\s*|\s*[-—－]\s+)(.+)$/);
+    let title = '其他';
+    let detail = clean;
+    if (match) {
+      title = normalizeTitle(match[1]) || '其他';
+      detail = normalizeText(match[2]);
+    } else {
+      const hit = KNOWN_TITLES.find(item => clean.includes(item));
+      if (hit) {
+        title = hit;
+        detail = normalizeText(clean.replace(hit, '').replace(/^[:：\-\s]+/, '')) || clean;
+      }
+    }
+    splitAndAppend(grouped, title, detail);
+  }
+  return Object.keys(grouped).map(title => ({
+    title,
+    category: title,
+    points: grouped[title]
+  })).filter(item => item.points.length > 0);
+}
+
+function toSummaryText(items, fallback) {
+  if (!Array.isArray(items) || !items.length) {
+    return normalizeText(fallback);
+  }
+  return items.map(item => `${item.title}：${item.points.join('；')}`).join('\n');
+}
+
 function getRecordText(record) {
   if (!record) {
     return '';
@@ -47,7 +167,7 @@ async function generateWeeklyWithAI(records, startDate, endDate) {
 3. 按类别分组，每个类别用 emoji 表情作为标识，类别名称简洁明了
 4. 每个类别下的条目简洁明了，每条不超过25字
 5. 可以适当加入简短的个人感受，增加趣味性
-6. 不要写成日记形式，要写成条目的形式
+6. 不要写成日记形式，要写成条目的形式比如美食：“我吃了1000卡路里的美食 电影：“我看了部新的电影”
 7. 直接开始分类总结，不要有引言或开场白
 8. 不同类别之间必须换行，确保分类清晰
 
@@ -136,6 +256,8 @@ exports.main = async (event, context) => {
 
     // 使用AI生成周报
     const weeklyContent = await generateWeeklyWithAI(records.data, startDate, endDate);
+    const summaryItems = parseAiTextToSummaryItems(weeklyContent);
+    const summaryText = toSummaryText(summaryItems, weeklyContent);
 
     // 保存周报到数据库
     await db.collection('diaries').add({
@@ -143,14 +265,17 @@ exports.main = async (event, context) => {
         type: 'weekly',
         startDate: startDate,
         endDate: endDate,
-        content: weeklyContent,
+        content: summaryText,
+        summaryItems: summaryItems,
         createTime: new Date().toLocaleString()
       }
     });
 
     return {
       success: true,
-      weekly: weeklyContent
+      weekly: summaryText,
+      summaryText,
+      summaryItems
     };
   } catch (error) {
     console.error('生成周报失败:', error);
