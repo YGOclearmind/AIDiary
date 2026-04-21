@@ -16,6 +16,57 @@ function normalizeText(text) {
   return String(text || '').trim();
 }
 
+function parseAiTextToSummaryItems(text) {
+  const source = normalizeText(text);
+  if (!source) {
+    return [];
+  }
+  const KNOWN_TITLES = ['美食', '电影', '学习', '工作', '运动', '休闲娱乐', '精神状态', '健康', '社交', '其他'];
+  const normalizeTitle = (raw) => normalizeText(raw)
+    .replace(/^[^\u4e00-\u9fa5A-Za-z0-9]+/, '')
+    .replace(/[^\u4e00-\u9fa5A-Za-z0-9]+$/, '')
+    .trim();
+  const lines = source
+    .split('\n')
+    .map(line => normalizeText(line))
+    .filter(Boolean);
+  const grouped = {};
+  for (const line of lines) {
+    const clean = line.replace(/^[•\-]\s*/, '').trim();
+    const match = clean.match(/^(.{1,24}?)(?:\s*[:：]\s*|\s*[-—－]\s+)(.+)$/);
+    let title = '其他';
+    let detail = clean;
+    if (match) {
+      title = normalizeTitle(match[1]) || '其他';
+      detail = normalizeText(match[2]);
+    } else {
+      const hit = KNOWN_TITLES.find(item => clean.includes(item));
+      if (hit) {
+        title = hit;
+        detail = normalizeText(clean.replace(hit, '').replace(/^[:：\-\s]+/, '')) || clean;
+      }
+    }
+    if (!grouped[title]) {
+      grouped[title] = [];
+    }
+    if (detail && !grouped[title].includes(detail)) {
+      grouped[title].push(detail);
+    }
+  }
+  return Object.keys(grouped).map(title => ({
+    title,
+    category: title,
+    points: grouped[title]
+  })).filter(item => item.points.length > 0);
+}
+
+function toSummaryText(items, fallback) {
+  if (!Array.isArray(items) || !items.length) {
+    return normalizeText(fallback);
+  }
+  return items.map(item => `${item.title}：${item.points.join('；')}`).join('\n');
+}
+
 function getRecordText(record) {
   if (!record) {
     return '';
@@ -49,7 +100,8 @@ async function generateDiaryWithAI(records, date) {
 5. 可以适当加入简短的个人感受，增加趣味性
 6. 不要写成日记形式，要写成条目的形式
 7. 直接开始分类总结，不要有引言或开场白
-8. 不同类别之间必须换行，确保分类清晰，一定要换行
+8. 不要写成日记形式，要写成条目的形式比如美食：“我吃了1000卡路里的美食 电影：“我看了部新的电影”
+9. 不同类别之间必须换行，确保分类清晰，一定要换行
 
 日期：${date}
 
@@ -140,20 +192,25 @@ exports.main = async (event, context) => {
 
     // 使用AI生成条目总结
     const summaryContent = await generateDiaryWithAI(records.data, date);
+    const summaryItems = parseAiTextToSummaryItems(summaryContent);
+    const summaryText = toSummaryText(summaryItems, summaryContent);
 
     // 保存总结到数据库
     await db.collection('diaries').add({
       data: {
         type: 'daily',
         date: date,
-        content: summaryContent,
+        content: summaryText,
+        summaryItems: summaryItems,
         createTime: new Date().toLocaleString()
       }
     });
 
     return {
       success: true,
-      diary: summaryContent
+      diary: summaryText,
+      summaryText,
+      summaryItems
     };
   } catch (error) {
     console.error('生成条目总结失败:', error);

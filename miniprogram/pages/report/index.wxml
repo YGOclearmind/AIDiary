@@ -1,0 +1,21 @@
+<view class="container">
+  <view class="report-card">
+    <view class="report-header">
+      <text class="report-title">{{title}}</text>
+      <text class="report-type">{{typeLabel}}</text>
+      <text class="report-date">{{date}}</text>
+    </view>
+
+    <view class="report-content">
+      <view wx:if="{{summaryItems.length > 0}}">
+        <view wx:for="{{summaryItems}}" wx:key="title" class="category-block">
+          <text class="category-title">{{item.title}}</text>
+          <text class="category-text">{{item.pointsText}}</text>
+        </view>
+      </view>
+      <text wx:else class="report-text">{{content}}</text>
+    </view>
+
+    <button class="copy-btn" bindtap="copyReport">复制报告</button>
+  </view>
+</view>
