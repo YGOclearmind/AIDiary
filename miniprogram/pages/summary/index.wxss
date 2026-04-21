@@ -269,12 +269,14 @@
 
 .summary-modal-content {
   width: 90%;
+  max-width: 700rpx;
   max-height: 80vh;
   background: linear-gradient(180deg, #ffffff 0%, #fdfbff 100%);
   border-radius: 32rpx;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
 }
 
 .summary-modal-header {
@@ -307,6 +309,8 @@
   flex: 1;
   padding: 30rpx;
   max-height: 50vh;
+  overflow: auto;
+  box-sizing: border-box;
 }
 
 .summary-modal-text {
@@ -314,5 +318,10 @@
   line-height: 1.8;
   color: #3d3250;
   white-space: pre-wrap;
-  word-break: break-word;
+  word-break: break-all;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  hyphens: auto;
+  width: 100%;
+  box-sizing: border-box;
 }
