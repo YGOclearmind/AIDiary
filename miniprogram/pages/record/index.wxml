@@ -1,122 +1,144 @@
 <view class="container">
-  <view class="header">
-    <text class="title">生活流水账</text>
-    <text class="subtitle">记录日常，整理灵感</text>
+  <view class="head-row">
+    <text class="title">记录</text>
+    <text class="pill">自动保存：开</text>
   </view>
 
-  <view class="hero-card">
-    <view class="hero-badge">随手记下日常片段</view>
-    <text class="hero-title">想到什么，就立刻记下来</text>
-    <text class="hero-desc">通过文字速记，快速记录下当下的想法、待办事项和心情。</text>
+  <view class="switch-bar">
+    <view class="switch-item {{currentView === 'write' ? 'switch-item-active' : ''}}" data-view="write" bindtap="switchRecordView">记录</view>
+    <view class="switch-item {{currentView === 'inspiration' ? 'switch-item-active' : ''}}" data-view="inspiration" bindtap="switchRecordView">灵感</view>
+    <view class="switch-item {{currentView === 'history' ? 'switch-item-active' : ''}}" data-view="history" bindtap="switchRecordView">历史</view>
   </view>
 
-  <view class="inspiration-card section-card">
-    <view class="section-head">
-      <view>
-        <text class="section-title">今日灵感</text>
-        <text class="section-desc">{{inspirationMonthDay}} 的历史片段</text>
-      </view>
-      <view class="inspiration-refresh" bindtap="refreshInspiration">换一条</view>
-    </view>
-    <view wx:if="{{inspirationLoading}}" class="inspiration-loading">灵感整理中...</view>
-    <view wx:elif="{{inspirationError}}" class="inspiration-error">{{inspirationError}}</view>
-    <view wx:else class="inspiration-content">
-      <view class="inspiration-block">
-        <text class="inspiration-label">历史上的今天</text>
-        <text class="inspiration-text">{{inspirationFact || '今天先写下一条记录，稍后再来看看灵感。'}}</text>
-      </view>
-      <view class="inspiration-block">
-        <text class="inspiration-label">你的往年今日</text>
-        <view wx:if="{{inspirationMemory}}">
-          <text class="inspiration-text">{{inspirationMemory.year}} · {{inspirationMemory.content}}</text>
-        </view>
-        <text wx:else class="inspiration-text">还没有找到往年今日记录，今天可以从一条小记录开始。</text>
-      </view>
-    </view>
+  <view class="template-row">
+    <text class="chip chip-active">三句话</text>
+    <text class="chip">复盘</text>
+    <text class="chip">感恩</text>
+    <text class="chip">随口说</text>
   </view>
 
-  <view class="input-section section-card">
-    <view class="section-head">
-      <text class="section-title">快速记录</text>
-    </view>
-    <view class="input-tools">
-      <text class="date-label">记录日期</text>
-      <picker mode="date" value="{{selectedRecordDate}}" bindchange="onRecordDateChange">
-        <view class="date-picker-trigger">
-          <text class="date-value">{{recordDateLabel}}</text>
-          <text class="date-arrow">▼</text>
-        </view>
-      </picker>
-    </view>
-    <view class="input-wrap">
-      <textarea
-        class="input-area"
-        placeholder="写下今天的想法、待办、心情或临时灵感..."
-        bindinput="inputContent"
-        bindfocus="handleInputFocus"
-        bindblur="handleInputBlur"
-        value="{{inputValue}}"
-        maxlength="-1"
-      ></textarea>
-      <view wx:if="{{showInputTip}}" class="input-tip">可使用手机键盘自带语音输入，更快记录内容</view>
-    </view>
-    <view wx:if="{{showVoiceEntry}}" class="voice-bar">
-      <button class="voice-btn {{isRecording ? 'voice-btn-recording' : ''}}" bindtap="toggleVoiceInput">
-        <text class="voice-btn-icon">{{isRecording ? '⏹' : '🎙️'}}</text>
-        <text class="voice-btn-text">{{isRecording ? '结束录音' : '开始录音'}}</text>
-      </button>
-      <text class="voice-status">{{voiceStatus}}</text>
-    </view>
-    <button class="save-btn" bindtap="saveInput">
-      <text class="save-btn-icon">💾</text>
-      <text class="save-btn-text">保存记录</text>
-    </button>
-  </view>
-
-  <view class="records-list section-card">
-    <view class="section-head">
-      <view>
-        <text class="section-title">最近记录</text>
-        <text class="section-desc">{{recentRangeText}}</text>
-      </view>
-      <text class="records-count">{{recentRecordCount}} 条</text>
-    </view>
-    <scroll-view class="records-scroll" scroll-y enhanced show-scrollbar="false">
-      <view wx:if="{{records.length > 0}}">
-        <view class="record-item {{selectedRecordId === item._id ? 'record-item-selected' : ''}}" wx:for="{{records}}" wx:key="_id">
-          <view wx:if="{{item.recordType === 'audio'}}" class="record-item-content" catchtap="toggleRecordActions" data-id="{{item._id}}">
-            <view class="audio-record-row">
-              <view class="audio-record-main">
-                <text class="audio-record-title">语音记录</text>
-                <text class="audio-record-desc">{{item.audioDurationText || '时长未知'}}</text>
-              </view>
-              <view class="record-actions">
-                <view
-                  class="audio-play-btn {{playingRecordId === item._id ? 'audio-play-btn-active' : ''}}"
-                  data-id="{{item._id}}"
-                  data-fileid="{{item.audioFileID}}"
-                  catchtap="playAudio"
-                >{{playingRecordId === item._id ? '⏸' : '▶'}}</view>
-              </view>
+  <swiper class="content-swiper" current="{{currentViewIndex}}" bindchange="onViewSwiperChange" duration="260">
+    <swiper-item>
+      <view class="card input-card">
+        <view class="row-head">
+          <text class="card-title">今天有什么值得记住？</text>
+          <picker mode="date" value="{{selectedRecordDate}}" bindchange="onRecordDateChange">
+            <view class="date-picker-trigger">
+              <text class="date-value">{{recordDateLabel}}</text>
+              <text class="date-arrow">></text>
             </view>
-            <text class="audio-record-note">{{item.transcriptText || item.content}}</text>
-            <text class="record-item-time">{{item.createTime}}</text>
+          </picker>
+        </view>
+        <view class="input-wrap">
+          <textarea
+            class="input-area"
+            placeholder="写一句也行。你可以：描述、吐槽、许愿、记录灵感…"
+            bindinput="inputContent"
+            bindfocus="handleInputFocus"
+            bindblur="handleInputBlur"
+            value="{{inputValue}}"
+            maxlength="-1"
+          ></textarea>
+          <view wx:if="{{showInputTip}}" class="input-tip">可使用手机键盘自带语音输入，更快记录内容</view>
+        </view>
+        <view class="meta-row">
+          <view class="meta-tags">
+            <text class="meta-chip">#健康</text>
+            <text class="meta-chip meta-chip-blue">#工作</text>
           </view>
-          <view wx:else class="record-item-content" catchtap="toggleRecordActions" data-id="{{item._id}}">
-            <view class="record-text-row">
-              <text class="record-item-text">{{item.content}}</text>
+          <text class="counter">{{inputLength}}/600</text>
+        </view>
+        <view class="action-row">
+          <button class="btn btn-primary" bindtap="saveInput">保存</button>
+          <button wx:if="{{showVoiceEntry}}" class="btn btn-muted {{isRecording ? 'btn-recording' : ''}}" bindtap="toggleVoiceInput">{{isRecording ? '结束语音' : '开始语音'}}</button>
+        </view>
+        <text wx:if="{{showVoiceEntry}}" class="voice-status">{{voiceStatus}}</text>
+      </view>
+
+      <view class="card drafts-card">
+        <text class="card-title">最近草稿</text>
+        <view wx:if="{{records.length > 0}}">
+          <block wx:for="{{records}}" wx:for-index="idx" wx:key="_id">
+            <view wx:if="{{idx < 2}}" class="draft-item">
+              <text>• {{item.transcriptText || item.content}}</text>
             </view>
-            <text class="record-item-time">{{item.createTime}}</text>
+          </block>
+        </view>
+        <text wx:else class="empty-text">还没有草稿，先写下第一条吧。</text>
+      </view>
+    </swiper-item>
+
+    <swiper-item>
+      <view class="card inspire-card">
+        <view class="row-head">
+          <view>
+            <text class="card-title">今日灵感</text>
+            <text class="card-desc">{{inspirationMonthDay}} 的历史片段</text>
+          </view>
+          <view class="pill" bindtap="refreshInspiration">换一条</view>
+        </view>
+        <view wx:if="{{inspirationLoading}}" class="state-text">灵感整理中...</view>
+        <view wx:elif="{{inspirationError}}" class="state-text state-text-error">{{inspirationError}}</view>
+        <view wx:else class="inspiration-content">
+          <view class="inspiration-block">
+            <text class="inspiration-label">历史上的今天</text>
+            <text class="inspiration-text">{{inspirationFact || '今天先写下一条记录，稍后再来看看灵感。'}}</text>
+          </view>
+          <view class="inspiration-block">
+            <text class="inspiration-label">你的往年今日</text>
+            <text wx:if="{{inspirationMemory}}" class="inspiration-text">{{inspirationMemory.year}} · {{inspirationMemory.content}}</text>
+            <text wx:else class="inspiration-text">还没有找到往年今日记录，今天可以从一条小记录开始。</text>
           </view>
         </view>
       </view>
-      <view wx:else class="empty-state">
-        <text class="empty-icon">📝</text>
-        <text class="empty-title">近两周还没有记录</text>
-        <text class="empty-desc">可以先打字记录下今天的想法、待办、心情或临时灵感。</text>
+    </swiper-item>
+
+    <swiper-item>
+      <view class="card history-card">
+        <view class="row-head">
+          <view>
+            <text class="card-title">最近记录</text>
+            <text class="card-desc">{{recentRangeText}}</text>
+          </view>
+          <text class="pill">{{recentRecordCount}} 条</text>
+        </view>
+        <scroll-view class="records-scroll" scroll-y enhanced show-scrollbar="false">
+          <view wx:if="{{records.length > 0}}">
+            <view class="record-item {{selectedRecordId === item._id ? 'record-item-selected' : ''}}" wx:for="{{records}}" wx:key="_id">
+              <view wx:if="{{item.recordType === 'audio'}}" class="record-item-content" catchtap="toggleRecordActions" data-id="{{item._id}}">
+                <view class="audio-record-row">
+                  <view class="audio-record-main">
+                    <text class="audio-record-title">语音记录</text>
+                    <text class="audio-record-desc">{{item.audioDurationText || '时长未知'}}</text>
+                  </view>
+                  <view class="record-actions">
+                    <view
+                      class="audio-play-btn {{playingRecordId === item._id ? 'audio-play-btn-active' : ''}}"
+                      data-id="{{item._id}}"
+                      data-fileid="{{item.audioFileID}}"
+                      catchtap="playAudio"
+                    >{{playingRecordId === item._id ? '||' : '>'}}</view>
+                  </view>
+                </view>
+                <text class="audio-record-note">{{item.transcriptText || item.content}}</text>
+                <text class="record-item-time">{{item.createTime}}</text>
+              </view>
+              <view wx:else class="record-item-content" catchtap="toggleRecordActions" data-id="{{item._id}}">
+                <view class="record-text-row">
+                  <text class="record-item-text">{{item.content}}</text>
+                </view>
+                <text class="record-item-time">{{item.createTime}}</text>
+              </view>
+            </view>
+          </view>
+          <view wx:else class="empty-state">
+            <text class="empty-title">近两周还没有记录</text>
+            <text class="empty-desc">可以先打字记录下今天的想法、待办、心情或临时灵感。</text>
+          </view>
+        </scroll-view>
       </view>
-    </scroll-view>
-  </view>
+    </swiper-item>
+  </swiper>
 
   <view wx:if="{{selectedRecordId}}" class="record-bottom-actions">
     <view class="record-bottom-btn" bindtap="editRecord">修改记录</view>

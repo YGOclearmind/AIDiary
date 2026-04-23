@@ -77,6 +77,28 @@ function getRecordText(record) {
   return normalizeText(record.content);
 }
 
+function summarizeRecordsLocally(records) {
+  const grouped = {};
+  for (const record of records) {
+    const text = getRecordText(record);
+    if (!text) {
+      continue;
+    }
+    const title = normalizeText(record.category) || '其他';
+    if (!grouped[title]) {
+      grouped[title] = [];
+    }
+    if (!grouped[title].includes(text)) {
+      grouped[title].push(text);
+    }
+  }
+  return Object.keys(grouped).map(title => ({
+    title,
+    category: title,
+    points: grouped[title]
+  })).filter(item => item.points.length > 0);
+}
+
 // 调用AI API生成条目总结
 async function generateDiaryWithAI(records, date) {
   // 提取记录内容
@@ -153,7 +175,7 @@ exports.config = {
 
 exports.main = async (event, context) => {
   try {
-    const { date, startTimestamp, endTimestamp } = event;
+    const { date, startTimestamp, endTimestamp, useAI } = event;
     const wxContext = cloud.getWXContext();
     const openid = wxContext.OPENID;
 
@@ -190,9 +212,17 @@ exports.main = async (event, context) => {
       };
     }
 
-    // 使用AI生成条目总结
-    const summaryContent = await generateDiaryWithAI(records.data, date);
-    const summaryItems = parseAiTextToSummaryItems(summaryContent);
+    // 支持在前端超时时降级到本地总结
+    const shouldUseAI = useAI !== false;
+    let summaryContent = '';
+    let summaryItems = [];
+    if (shouldUseAI) {
+      summaryContent = await generateDiaryWithAI(records.data, date);
+      summaryItems = parseAiTextToSummaryItems(summaryContent);
+    } else {
+      summaryItems = summarizeRecordsLocally(records.data);
+      summaryContent = toSummaryText(summaryItems, '');
+    }
     const summaryText = toSummaryText(summaryItems, summaryContent);
 
     // 保存总结到数据库
@@ -210,7 +240,8 @@ exports.main = async (event, context) => {
       success: true,
       diary: summaryText,
       summaryText,
-      summaryItems
+      summaryItems,
+      aiUsed: shouldUseAI
     };
   } catch (error) {
     console.error('生成条目总结失败:', error);

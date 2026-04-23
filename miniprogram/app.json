@@ -1,28 +1,35 @@
 {
   "pages": [
+    "pages/home/index",
     "pages/record/index",
     "pages/summary/index",
     "pages/mine/index",
     "pages/report/index"
   ],
   "window": {
-    "backgroundColor": "#F4F8FF",
+    "backgroundColor": "#FFFFFF",
     "backgroundTextStyle": "light",
-    "navigationBarBackgroundColor": "#F4F8FF",
-    "navigationBarTitleText": "AI流水账",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "navigationBarTitleText": "随性日记",
     "navigationBarTextStyle": "black"
   },
   "tabBar": {
-    "color": "#98A2B3",
-    "selectedColor": "#4F7CFF",
+    "color": "#666666",
+    "selectedColor": "#1F1F1F",
     "backgroundColor": "#FFFFFF",
     "borderStyle": "black",
     "list": [
       {
-        "pagePath": "pages/record/index",
-        "text": "记录",
+        "pagePath": "pages/home/index",
+        "text": "工作台",
         "iconPath": "images/icons/home.png",
         "selectedIconPath": "images/icons/home-active.png"
+      },
+      {
+        "pagePath": "pages/record/index",
+        "text": "记录",
+        "iconPath": "images/icons/goods.png",
+        "selectedIconPath": "images/icons/goods-active.png"
       },
       {
         "pagePath": "pages/summary/index",

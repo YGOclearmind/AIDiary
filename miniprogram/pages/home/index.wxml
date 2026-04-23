@@ -1,0 +1,83 @@
+<view class="container">
+  <view class="hero">
+    <view class="title-row">
+      <view>
+        <text class="title">随性日记</text>
+        <text class="subtitle">下午好，今天想留下些什么？</text>
+      </view>
+      <view class="avatar">随</view>
+    </view>
+    <view class="streak-row">
+      <text class="chip chip-orange">连续 7 天</text>
+      <text class="streak-text">目标：每天 1 条 · 轻量也算数</text>
+    </view>
+  </view>
+
+  <view class="mood-row">
+    <text class="chip">😌 平静</text>
+    <text class="chip chip-orange">😊 开心</text>
+    <text class="chip">😮‍💨 疲惫</text>
+    <text class="chip">😵‍💫 焦虑</text>
+  </view>
+
+  <view class="card quick-card">
+    <view class="card-head">
+      <text class="card-title">一键快记</text>
+      <text class="card-meta">{{todayLabel}}</text>
+    </view>
+    <textarea
+      class="input-area"
+      placeholder="写一句也行。你可以：描述、吐槽、许愿、记录灵感…"
+      bindinput="inputContent"
+      value="{{inputValue}}"
+      maxlength="-1"
+    ></textarea>
+    <view class="action-row">
+      <button class="btn btn-primary" bindtap="saveInput">保存</button>
+      <button class="btn btn-muted" bindtap="goRecord">去记录</button>
+    </view>
+  </view>
+
+  <view class="highlight">
+    <text class="highlight-title">今日灵感</text>
+    <view wx:if="{{inspirationLoading}}" class="state-text">灵感整理中...</view>
+    <view wx:elif="{{inspirationError}}" class="state-text">{{inspirationError}}</view>
+    <view wx:else>
+      <text class="highlight-text">{{inspirationFact || '把今天最想留住的一刻写成一句：我看见___，于是___。'}}</text>
+      <text wx:if="{{inspirationMemory}}" class="highlight-sub">{{inspirationMemory.year}} · {{inspirationMemory.content}}</text>
+    </view>
+    <view class="action-row">
+      <button class="btn btn-dark" bindtap="goRecordWithInspiration">去记录</button>
+    </view>
+  </view>
+
+  <view class="card timeline-card">
+    <view class="card-head">
+      <text class="card-title">本周碎碎念</text>
+      <view class="chip-wrap">
+        <text class="chip-count">{{weekRangeLabel}}</text>
+        <text class="chip-count">语音 {{audioCount}}</text>
+        <text class="chip-count">总结 {{summaryCount}}</text>
+      </view>
+    </view>
+    <view wx:if="{{weeklyNotesLoading}}" class="state-text">正在生成本周时间线...</view>
+    <view wx:elif="{{weeklyNotesError}}" class="state-text">{{weeklyNotesError}}</view>
+    <view wx:elif="{{weeklyNotes.length === 0}}" class="state-text">这周还没有碎碎念，先写一条吧。</view>
+    <view wx:else class="timeline-list">
+      <view wx:for="{{weeklyNotes}}" wx:key="id" class="timeline-item">
+        <view class="timeline-marker">
+          <view class="dot"></view>
+          <view class="timeline-line"></view>
+        </view>
+        <view class="timeline-main">
+          <view class="timeline-head">
+            <text class="timeline-time">{{item.timeLabel}}</text>
+            <text class="timeline-day">{{item.dayLabel}}</text>
+          </view>
+          <text class="timeline-text">{{item.content}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
+

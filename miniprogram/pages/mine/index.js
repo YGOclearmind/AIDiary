@@ -1,9 +1,39 @@
 Page({
   data: {
+    currentTab: 'stats',
+    currentTabIndex: 0,
     userOpenid: '',
     recordCount: 0,
     audioCount: 0,
     summaryCount: 0
+  },
+
+  setCurrentTab(tab) {
+    const order = ['stats', 'settings', 'about'];
+    const nextIndex = Math.max(0, order.indexOf(tab));
+    const nextTab = order[nextIndex] || 'stats';
+    this.setData({
+      currentTab: nextTab,
+      currentTabIndex: nextIndex
+    });
+  },
+
+  switchMineTab(e) {
+    const tab = e.currentTarget.dataset.tab;
+    if (!tab || tab === this.data.currentTab) {
+      return;
+    }
+    this.setCurrentTab(tab);
+  },
+
+  onTabSwiperChange(e) {
+    const index = Number(e.detail.current || 0);
+    const order = ['stats', 'settings', 'about'];
+    const tab = order[index] || 'stats';
+    if (tab === this.data.currentTab && index === this.data.currentTabIndex) {
+      return;
+    }
+    this.setCurrentTab(tab);
   },
 
   onLoad() {
