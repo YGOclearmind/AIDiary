@@ -55,7 +55,10 @@ function inferCategory(text) {
 
 Page({
   data: {
+    currentView: 'write',
+    currentViewIndex: 0,
     inputValue: '',
+    inputLength: 0,
     records: [],
     isRecording: false,
     voiceAvailable: true,
@@ -81,6 +84,34 @@ Page({
     summaryModalContent: ''
   },
 
+  setCurrentView(view) {
+    const order = ['write', 'inspiration', 'history'];
+    const nextIndex = Math.max(0, order.indexOf(view));
+    const nextView = order[nextIndex] || 'write';
+    this.setData({
+      currentView: nextView,
+      currentViewIndex: nextIndex
+    });
+  },
+
+  switchRecordView(e) {
+    const view = e.currentTarget.dataset.view;
+    if (!view || view === this.data.currentView) {
+      return;
+    }
+    this.setCurrentView(view);
+  },
+
+  onViewSwiperChange(e) {
+    const index = Number(e.detail.current || 0);
+    const order = ['write', 'inspiration', 'history'];
+    const view = order[index] || 'write';
+    if (view === this.data.currentView && index === this.data.currentViewIndex) {
+      return;
+    }
+    this.setCurrentView(view);
+  },
+
   onLoad() {
     const systemInfo = wx.getSystemInfoSync();
     this.audioTempUrlCache = {};
@@ -94,6 +125,25 @@ Page({
     this.initVoiceInput();
     this.initAudioPlayer();
     this.getTodayInspiration();
+    this.getRecords();
+  },
+
+  onShow() {
+    const initialView = wx.getStorageSync('recordInitialView');
+    if (initialView) {
+      wx.removeStorageSync('recordInitialView');
+      this.setCurrentView(initialView);
+    }
+    const initialContent = wx.getStorageSync('recordInitialContent');
+    if (initialContent) {
+      const draft = String(initialContent || '');
+      wx.removeStorageSync('recordInitialContent');
+      this.setCurrentView('write');
+      this.setData({
+        inputValue: draft,
+        inputLength: draft.length
+      });
+    }
     this.getRecords();
   },
 
@@ -181,8 +231,10 @@ Page({
   },
 
   inputContent(e) {
+    const value = e.detail.value || '';
     this.setData({
-      inputValue: e.detail.value
+      inputValue: value,
+      inputLength: value.length
     });
   },
 
@@ -498,6 +550,7 @@ Page({
     this.saveRecord(content);
     this.setData({
       inputValue: '',
+      inputLength: 0,
       selectedRecordId: '',
       showInputTip: false,
       voiceStatus: this.data.voiceAvailable ? '点击开始录音，保存一条语音记录' : this.data.voiceStatus

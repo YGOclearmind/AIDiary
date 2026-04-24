@@ -1,21 +1,86 @@
 <view class="container">
-  <view class="report-card">
-    <view class="report-header">
-      <text class="report-title">{{title}}</text>
-      <text class="report-type">{{typeLabel}}</text>
-      <text class="report-date">{{date}}</text>
-    </view>
+  <view class="header">
+    <text class="header-back">&lt; 返回</text>
+    <text class="header-title">{{title}}</text>
+    <text class="header-more">···</text>
+  </view>
 
-    <view class="report-content">
-      <view wx:if="{{summaryItems.length > 0}}">
-        <view wx:for="{{summaryItems}}" wx:key="title" class="category-block">
-          <text class="category-title">{{item.title}}</text>
-          <text class="category-text">{{item.pointsText}}</text>
+  <view class="hero">
+    <text class="hero-date">{{date || '本期报告'}}</text>
+    <text class="hero-title">关键词：时间线、总结、复盘</text>
+    <view class="hero-chips">
+      <text class="hero-chip">#{{typeLabel}}</text>
+      <text class="hero-chip">#碎碎念</text>
+      <text class="hero-chip">#AI报告</text>
+    </view>
+  </view>
+
+  <view class="switch-bar">
+    <view class="switch-item {{currentTab === 'outline' ? 'switch-item-active' : ''}}" data-tab="outline" data-index="0" bindtap="switchReportTab">结构视图</view>
+    <view class="switch-item {{currentTab === 'full' ? 'switch-item-active' : ''}}" data-tab="full" data-index="1" bindtap="switchReportTab">全文视图</view>
+  </view>
+
+  <swiper class="content-swiper" current="{{currentTabIndex}}" bindchange="onTabSwiperChange" duration="260">
+    <swiper-item>
+      <scroll-view class="report-scroll" scroll-y enhanced show-scrollbar="false">
+        <view class="section">
+          <text class="section-title">你做得好的</text>
+          <view wx:if="{{timelineRecords.length > 0}}" class="timeline">
+            <block wx:for="{{timelineRecords}}" wx:key="_id">
+              <view wx:if="{{item.dayText}}" class="timeline-day">
+                <text class="timeline-day-text">{{item.dayText}}</text>
+              </view>
+              <view class="timeline-item">
+                <view class="timeline-left">
+                  <view class="timeline-dot"></view>
+                  <view wx:if="{{!item.isLast}}" class="timeline-line"></view>
+                </view>
+                <view class="timeline-right">
+                  <view class="timeline-meta">
+                    <text class="timeline-time">{{item.timeText}}</text>
+                    <text wx:if="{{item.category}}" class="timeline-tag">{{item.category}}</text>
+                    <text wx:if="{{item.recordTypeText}}" class="timeline-tag">{{item.recordTypeText}}</text>
+                  </view>
+                  <text class="timeline-text">{{item.contentText}}</text>
+                </view>
+              </view>
+            </block>
+          </view>
+          <view wx:elif="{{summaryItems.length > 0}}">
+            <view wx:for="{{summaryItems}}" wx:key="title" class="category-block">
+              <text class="category-title">{{item.title}}</text>
+              <text class="category-text">{{item.pointsText}}</text>
+            </view>
+          </view>
+          <text wx:else class="report-text">暂无可展示内容。</text>
         </view>
-      </view>
-      <text wx:else class="report-text">{{content}}</text>
-    </view>
 
-    <button class="copy-btn" bindtap="copyReport">复制报告</button>
+        <view class="section">
+          <text class="section-title">下阶段建议</text>
+          <text class="report-text">{{content || '坚持记录，把大问题拆成小行动。'}}</text>
+        </view>
+      </scroll-view>
+    </swiper-item>
+
+    <swiper-item>
+      <scroll-view class="report-scroll" scroll-y enhanced show-scrollbar="false">
+        <view class="section">
+          <text class="section-title">全文视图</text>
+          <text class="report-text">{{content}}</text>
+        </view>
+        <view wx:if="{{summaryItems.length > 0}}" class="section">
+          <text class="section-title">结构摘录</text>
+          <view wx:for="{{summaryItems}}" wx:key="title" class="category-block">
+            <text class="category-title">{{item.title}}</text>
+            <text class="category-text">{{item.pointsText}}</text>
+          </view>
+        </view>
+      </scroll-view>
+    </swiper-item>
+  </swiper>
+
+  <view class="bottom-actions">
+    <button class="copy-btn" bindtap="copyReport">分享报告</button>
+    <button class="copy-btn copy-btn-muted" bindtap="copyReport">复制内容</button>
   </view>
 </view>

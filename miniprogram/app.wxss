@@ -1,11 +1,4 @@
 /**app.wxss**/
-.container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  box-sizing: border-box;
-} 
-
 button {
   background: initial;
 }
@@ -18,9 +11,18 @@ button::after{
   border: none;
 }
 
-
 page {
-  background: #f6f6f6;
+  --aid-bg-0: #fcfaf7;
+  --aid-bg-1: #fcfaf7;
+  --aid-text: #24211d;
+  --aid-muted: #8e8379;
+  --aid-surface: #ffffff;
+  --aid-surface-2: #ffffffcc;
+  --aid-line: #efe7dd;
+  --aid-shadow: 0 12rpx 30rpx rgba(0, 0, 0, 0.08);
+
+  background: linear-gradient(180deg, var(--aid-bg-0) 0%, var(--aid-bg-1) 100%);
+  color: var(--aid-text);
   display: flex;
   flex-direction: column;
   justify-content: flex-start;

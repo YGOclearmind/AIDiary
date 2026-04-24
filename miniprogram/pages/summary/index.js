@@ -126,11 +126,41 @@ function extractOpenidFromApp(page) {
 
 Page({
   data: {
+    currentTab: 'generate',
+    currentTabIndex: 0,
     summaryHistory: [],
     yearOptions: [],
     selectedYear: new Date().getFullYear(),
     selectedYearIndex: 0,
     currentOpenid: ''
+  },
+
+  setCurrentTab(tab) {
+    const order = ['generate', 'history', 'guide'];
+    const nextIndex = Math.max(0, order.indexOf(tab));
+    const nextTab = order[nextIndex] || 'generate';
+    this.setData({
+      currentTab: nextTab,
+      currentTabIndex: nextIndex
+    });
+  },
+
+  switchSummaryTab(e) {
+    const tab = e.currentTarget.dataset.tab;
+    if (!tab || tab === this.data.currentTab) {
+      return;
+    }
+    this.setCurrentTab(tab);
+  },
+
+  onTabSwiperChange(e) {
+    const index = Number(e.detail.current || 0);
+    const order = ['generate', 'history', 'guide'];
+    const tab = order[index] || 'generate';
+    if (tab === this.data.currentTab && index === this.data.currentTabIndex) {
+      return;
+    }
+    this.setCurrentTab(tab);
   },
 
   onLoad() {
@@ -141,6 +171,14 @@ Page({
       selectedYearIndex: 0
     });
     this.getSummaryHistory();
+  },
+
+  onShow() {
+    const initialTab = wx.getStorageSync('summaryInitialTab');
+    if (initialTab) {
+      wx.removeStorageSync('summaryInitialTab');
+      this.setCurrentTab(initialTab);
+    }
   },
 
   ensureOpenid(callback) {
@@ -209,23 +247,14 @@ Page({
       end.setHours(23, 59, 59, 999);
 
       const dateText = formatRecordDate(start);
-      this.checkExistingSummary('daily', dateText, (existing) => {
-        wx.hideLoading();
-        this.openReportPage({
-          reportId: existing._id || '',
-          type: existing.type || 'daily',
-          title: buildReportTitle('daily'),
-          date: existing.date || dateText,
-          content: existing.content || '',
-          summaryItems: Array.isArray(existing.summaryItems) ? existing.summaryItems : []
-        });
-      }, () => {
+      const requestDaily = (useAI) => {
         wx.cloud.callFunction({
           name: 'generateDiary',
           data: {
             date: dateText,
             startTimestamp: start.getTime(),
-            endTimestamp: end.getTime()
+            endTimestamp: end.getTime(),
+            useAI: useAI
           },
           success: function(res) {
             wx.hideLoading();
@@ -240,6 +269,12 @@ Page({
                 summaryItems
               });
               this.saveSummaryHistory('daily', dateText, summaryText, summaryItems);
+              if (useAI && res.result.aiUsed === false) {
+                wx.showToast({
+                  title: 'AI超时，已降级本地日报',
+                  icon: 'none'
+                });
+              }
             } else {
               wx.showToast({
                 title: res.result.message || '生成总结失败',
@@ -247,7 +282,13 @@ Page({
               });
             }
           }.bind(this),
-          fail: function() {
+          fail: function(err) {
+            const errMsg = err && err.errMsg ? err.errMsg : '';
+            const isTimeout = errMsg.includes('timeout');
+            if (useAI && isTimeout) {
+              requestDaily(false);
+              return;
+            }
             wx.hideLoading();
             wx.showToast({
               title: '生成总结失败',
@@ -255,6 +296,19 @@ Page({
             });
           }
         });
+      };
+      this.checkExistingSummary('daily', dateText, (existing) => {
+        wx.hideLoading();
+        this.openReportPage({
+          reportId: existing._id || '',
+          type: existing.type || 'daily',
+          title: buildReportTitle('daily'),
+          date: existing.date || dateText,
+          content: existing.content || '',
+          summaryItems: Array.isArray(existing.summaryItems) ? existing.summaryItems : []
+        });
+      }, () => {
+        requestDaily(true);
       });
     });
   },
