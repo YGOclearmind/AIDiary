@@ -95,7 +95,9 @@ Page({
     weeklyNotes: [],
     weeklyNotesLoading: false,
     weeklyNotesError: '',
-    weekRangeLabel: ''
+    weekRangeLabel: '',
+    selectedMood: '😌 平静',
+    streakDays: 0
   },
 
   onLoad() {
@@ -137,6 +139,15 @@ Page({
     });
   },
 
+  selectMood(e) {
+    const mood = e.currentTarget.dataset.mood || '';
+    if (this.data.selectedMood === mood) {
+      this.setData({ selectedMood: '' });
+    } else {
+      this.setData({ selectedMood: mood });
+    }
+  },
+
   saveInput() {
     const content = String(this.data.inputValue || '').trim();
     if (!content) {
@@ -160,6 +171,7 @@ Page({
     const date = formatRecordDate(now);
     const monthDay = formatMonthDay(now);
     const category = inferCategory(content);
+    const mood = this.data.selectedMood;
 
     db.collection('records').add({
       data: {
@@ -170,6 +182,7 @@ Page({
         year: now.getFullYear(),
         monthDay: monthDay,
         category: category,
+        mood: mood,
         recordType: 'text',
         audioFileID: '',
         audioDuration: 0,
@@ -180,6 +193,7 @@ Page({
           title: '保存成功',
           icon: 'success'
         });
+        this.setData({ selectedMood: '' });
         this.getStats();
       },
       fail: () => {
@@ -283,6 +297,53 @@ Page({
         });
       }
     });
+
+    this.getStreakDays();
+  },
+
+  getStreakDays() {
+    const db = wx.cloud.database();
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const oneDayMs = 24 * 60 * 60 * 1000;
+
+    db.collection('records')
+      .orderBy('timestamp', 'desc')
+      .limit(100)
+      .get({
+        success: res => {
+          const records = Array.isArray(res.data) ? res.data : [];
+          if (!records.length) {
+            this.setData({ streakDays: 0 });
+            return;
+          }
+
+          const uniqueDays = new Set();
+          records.forEach(record => {
+            const date = new Date(record.timestamp);
+            const dayKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+            uniqueDays.add(dayKey);
+          });
+
+          let streak = 0;
+          let checkDate = new Date(today);
+
+          for (let i = 0; i < 365; i++) {
+            const dayKey = `${checkDate.getFullYear()}-${checkDate.getMonth()}-${checkDate.getDate()}`;
+            if (uniqueDays.has(dayKey)) {
+              streak++;
+              checkDate.setTime(checkDate.getTime() - oneDayMs);
+            } else {
+              break;
+            }
+          }
+
+          this.setData({ streakDays: streak });
+        },
+        fail: () => {
+          this.setData({ streakDays: 0 });
+        }
+      });
   },
 
   getWeeklyNotes() {

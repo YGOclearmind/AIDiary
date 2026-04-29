@@ -8,16 +8,16 @@
       <view class="avatar">随</view>
     </view>
     <view class="streak-row">
-      <text class="chip chip-orange">连续 7 天</text>
+      <text class="chip chip-orange">连续 {{streakDays}} 天</text>
       <text class="streak-text">目标：每天 1 条 · 轻量也算数</text>
     </view>
   </view>
 
   <view class="mood-row">
-    <text class="chip">😌 平静</text>
-    <text class="chip chip-orange">😊 开心</text>
-    <text class="chip">😮‍💨 疲惫</text>
-    <text class="chip">😵‍💫 焦虑</text>
+    <text class="chip {{selectedMood === '😌 平静' ? 'chip-orange' : ''}}" data-mood="😌 平静" bindtap="selectMood">😌 平静</text>
+    <text class="chip {{selectedMood === '😊 开心' ? 'chip-orange' : ''}}" data-mood="😊 开心" bindtap="selectMood">😊 开心</text>
+    <text class="chip {{selectedMood === '😮‍💨 疲惫' ? 'chip-orange' : ''}}" data-mood="😮‍💨 疲惫" bindtap="selectMood">😮‍💨 疲惫</text>
+    <text class="chip {{selectedMood === '😵‍💫 焦虑' ? 'chip-orange' : ''}}" data-mood="😵‍💫 焦虑" bindtap="selectMood">😵‍💫 焦虑</text>
   </view>
 
   <view class="card quick-card">
