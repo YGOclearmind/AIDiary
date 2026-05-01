@@ -1,83 +1,106 @@
-<view class="container">
-  <view class="hero">
-    <view class="title-row">
-      <view>
-        <text class="title">随性日记</text>
-        <text class="subtitle">下午好，今天想留下些什么？</text>
+<view class="page">
+  <scroll-view class="scroll-area" scroll-y enhanced show-scrollbar="false" scroll-x="false" enable-flex>
+    <view class="header-row">
+      <view class="header-left">
+        <text class="greeting">{{greetingText}}</text>
+        <text class="date-title">{{dateTitle}}</text>
       </view>
-      <view class="avatar">随</view>
-    </view>
-    <view class="streak-row">
-      <text class="chip chip-orange">连续 {{streakDays}} 天</text>
-      <text class="streak-text">目标：每天 1 条 · 轻量也算数</text>
-    </view>
-  </view>
-
-  <view class="mood-row">
-    <text class="chip {{selectedMood === '😌 平静' ? 'chip-orange' : ''}}" data-mood="😌 平静" bindtap="selectMood">😌 平静</text>
-    <text class="chip {{selectedMood === '😊 开心' ? 'chip-orange' : ''}}" data-mood="😊 开心" bindtap="selectMood">😊 开心</text>
-    <text class="chip {{selectedMood === '😮‍💨 疲惫' ? 'chip-orange' : ''}}" data-mood="😮‍💨 疲惫" bindtap="selectMood">😮‍💨 疲惫</text>
-    <text class="chip {{selectedMood === '😵‍💫 焦虑' ? 'chip-orange' : ''}}" data-mood="😵‍💫 焦虑" bindtap="selectMood">😵‍💫 焦虑</text>
-  </view>
-
-  <view class="card quick-card">
-    <view class="card-head">
-      <text class="card-title">一键快记</text>
-      <text class="card-meta">{{todayLabel}}</text>
-    </view>
-    <textarea
-      class="input-area"
-      placeholder="写一句也行。你可以：描述、吐槽、许愿、记录灵感…"
-      bindinput="inputContent"
-      value="{{inputValue}}"
-      maxlength="-1"
-    ></textarea>
-    <view class="action-row">
-      <button class="btn btn-primary" bindtap="saveInput">保存</button>
-      <button class="btn btn-muted" bindtap="goRecord">去记录</button>
-    </view>
-  </view>
-
-  <view class="highlight">
-    <text class="highlight-title">今日灵感</text>
-    <view wx:if="{{inspirationLoading}}" class="state-text">灵感整理中...</view>
-    <view wx:elif="{{inspirationError}}" class="state-text">{{inspirationError}}</view>
-    <view wx:else>
-      <text class="highlight-text">{{inspirationFact || '把今天最想留住的一刻写成一句：我看见___，于是___。'}}</text>
-      <text wx:if="{{inspirationMemory}}" class="highlight-sub">{{inspirationMemory.year}} · {{inspirationMemory.content}}</text>
-    </view>
-    <view class="action-row">
-      <button class="btn btn-dark" bindtap="goRecordWithInspiration">去记录</button>
-    </view>
-  </view>
-
-  <view class="card timeline-card">
-    <view class="card-head">
-      <text class="card-title">本周碎碎念</text>
-      <view class="chip-wrap">
-        <text class="chip-count">{{weekRangeLabel}}</text>
-        <text class="chip-count">语音 {{audioCount}}</text>
-        <text class="chip-count">总结 {{summaryCount}}</text>
+      <view class="avatar">
+        <text class="avatar-text">S</text>
       </view>
     </view>
-    <view wx:if="{{weeklyNotesLoading}}" class="state-text">正在生成本周时间线...</view>
-    <view wx:elif="{{weeklyNotesError}}" class="state-text">{{weeklyNotesError}}</view>
-    <view wx:elif="{{weeklyNotes.length === 0}}" class="state-text">这周还没有碎碎念，先写一条吧。</view>
-    <view wx:else class="timeline-list">
-      <view wx:for="{{weeklyNotes}}" wx:key="id" class="timeline-item">
-        <view class="timeline-marker">
-          <view class="dot"></view>
-          <view class="timeline-line"></view>
+
+    <view class="ai-card">
+      <view class="ai-card-header">
+        <text class="ai-sparkle">✨</text>
+        <text class="ai-title">AI 日常精选</text>
+      </view>
+      <text class="ai-summary">{{aiSummaryText}}</text>
+    </view>
+
+    <view class="timeline-header">
+      <text class="timeline-title">今日记录</text>
+      <text class="timeline-count">{{todayRecords.length}} 条笔记</text>
+    </view>
+
+    <view class="timeline-feed">
+      <view class="timeline-dots">
+        <view 
+          wx:for="{{todayRecords}}" 
+          wx:key="_id" 
+          class="dot-col"
+        >
+          <view class="dot {{index === 0 ? 'dot-active' : ''}}"></view>
+          <view wx:if="{{index < todayRecords.length - 1}}" class="dot-line"></view>
         </view>
-        <view class="timeline-main">
-          <view class="timeline-head">
-            <text class="timeline-time">{{item.timeLabel}}</text>
-            <text class="timeline-day">{{item.dayLabel}}</text>
+      </view>
+      <view class="timeline-cards">
+        <view 
+          wx:for="{{todayRecords}}" 
+          wx:key="_id" 
+          class="entry-card"
+        >
+          <text class="entry-time">{{item.timeText}}</text>
+          <text class="entry-text">{{item.contentText}}</text>
+          <view wx:if="{{item.category}}" class="entry-tag">
+            <text class="entry-tag-text">{{item.category}}</text>
           </view>
-          <text class="timeline-text">{{item.content}}</text>
         </view>
       </view>
+    </view>
+
+    <view wx:if="{{todayRecords.length === 0}}" class="empty-hint">
+      <text class="empty-hint-text">今天还没有记录，写下你的第一条吧 ✍️</text>
+    </view>
+
+    <view class="bottom-spacer"></view>
+  </scroll-view>
+
+  <view class="input-bar">
+    <view class="input-row">
+      <view class="add-btn" bindtap="onAddTap">
+        <text class="add-icon">+</text>
+      </view>
+      <input
+        class="text-input"
+        placeholder="记录此刻的想法..."
+        placeholder-class="input-placeholder"
+        bindinput="onInputChange"
+        bindconfirm="onInputConfirm"
+        value="{{inputValue}}"
+        confirm-type="done"
+      />
+      <view class="date-btn" bindtap="onDateTap">
+        <text class="date-btn-icon">📅</text>
+        <text class="date-btn-text">{{dateBtnLabel}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{showInputModal}}" class="modal-mask" bindtap="closeInputModal">
+    <view class="modal-content" catchtap="preventTap">
+      <view class="modal-header">
+        <text class="modal-title">写一条记录</text>
+        <view class="modal-close" bindtap="closeInputModal">×</view>
+      </view>
+      <textarea
+        class="modal-textarea"
+        placeholder="写一句也行，描述、吐槽、许愿、记录灵感…"
+        placeholder-class="modal-placeholder"
+        bindinput="onModalInput"
+        value="{{modalInputValue}}"
+        maxlength="-1"
+        auto-height
+        focus="{{showInputModal}}"
+      ></textarea>
+      <view class="modal-actions">
+        <button class="modal-btn modal-btn-voice" bindtap="toggleVoiceInput">
+          <text class="modal-btn-icon">🎤</text>
+          <text class="modal-btn-text">{{isRecording ? '结束' : '语音'}}</text>
+        </button>
+        <button class="modal-btn modal-btn-save" bindtap="saveRecord">保存</button>
+      </view>
+      <text wx:if="{{voiceStatus}}" class="voice-status">{{voiceStatus}}</text>
     </view>
   </view>
 </view>
-

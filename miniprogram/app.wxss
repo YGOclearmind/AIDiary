@@ -1,29 +1,39 @@
-/**app.wxss**/
 button {
   background: initial;
 }
 
-button:focus{
+button:focus {
   outline: 0;
 }
 
-button::after{
+button::after {
   border: none;
 }
 
 page {
-  --aid-bg-0: #fcfaf7;
-  --aid-bg-1: #fcfaf7;
-  --aid-text: #24211d;
-  --aid-muted: #8e8379;
-  --aid-surface: #ffffff;
-  --aid-surface-2: #ffffffcc;
-  --aid-line: #efe7dd;
-  --aid-shadow: 0 12rpx 30rpx rgba(0, 0, 0, 0.08);
+  --warm-bg: #FFF9F2;
+  --warm-bg-card: #FFFFFF;
+  --warm-bg-input: #F5EFE8;
+  --warm-bg-seg: #F0EAE0;
+  --warm-text: #2D2A26;
+  --warm-text-sec: #5A5048;
+  --warm-text-muted: #A09080;
+  --warm-text-light: #B0A090;
+  --warm-text-placeholder: #C0B0A0;
+  --warm-accent: #E8A040;
+  --warm-accent-dark: #C08030;
+  --warm-border: #E8DDD0;
+  --warm-border-light: #F0EAE0;
+  --warm-shadow: rgba(212, 196, 176, 0.12);
+  --warm-shadow-card: rgba(212, 196, 176, 0.2);
+  --warm-tag-orange-bg: #FFF0E0;
+  --warm-tag-orange-text: #C08030;
+  --warm-tag-green-bg: #E8F4E0;
+  --warm-tag-green-text: #508040;
+  --warm-tag-blue-bg: #E0E8F8;
+  --warm-tag-blue-text: #4060A0;
 
-  background: linear-gradient(180deg, var(--aid-bg-0) 0%, var(--aid-bg-1) 100%);
-  color: var(--aid-text);
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
+  background: var(--warm-bg);
+  color: var(--warm-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'PingFang SC', sans-serif;
 }

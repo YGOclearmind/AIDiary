@@ -1,47 +1,32 @@
 {
   "pages": [
     "pages/home/index",
-    "pages/record/index",
-    "pages/summary/index",
-    "pages/mine/index",
-    "pages/report/index"
+    "pages/summary/index"
   ],
   "window": {
-    "backgroundColor": "#FFFFFF",
+    "backgroundColor": "#FFF9F2",
     "backgroundTextStyle": "light",
-    "navigationBarBackgroundColor": "#FFFFFF",
+    "navigationBarBackgroundColor": "#FFF9F2",
     "navigationBarTitleText": "随性日记",
     "navigationBarTextStyle": "black"
   },
   "tabBar": {
-    "color": "#666666",
-    "selectedColor": "#1F1F1F",
-    "backgroundColor": "#FFFFFF",
-    "borderStyle": "black",
+    "color": "#A09080",
+    "selectedColor": "#E8A040",
+    "backgroundColor": "#FFFDFB",
+    "borderStyle": "white",
     "list": [
       {
         "pagePath": "pages/home/index",
-        "text": "工作台",
+        "text": "日记",
         "iconPath": "images/icons/home.png",
         "selectedIconPath": "images/icons/home-active.png"
       },
       {
-        "pagePath": "pages/record/index",
-        "text": "记录",
-        "iconPath": "images/icons/goods.png",
-        "selectedIconPath": "images/icons/goods-active.png"
-      },
-      {
         "pagePath": "pages/summary/index",
-        "text": "总结",
+        "text": "洞察",
         "iconPath": "images/icons/examples.png",
         "selectedIconPath": "images/icons/examples-active.png"
-      },
-      {
-        "pagePath": "pages/mine/index",
-        "text": "我的",
-        "iconPath": "images/icons/usercenter.png",
-        "selectedIconPath": "images/icons/usercenter-active.png"
       }
     ]
   },

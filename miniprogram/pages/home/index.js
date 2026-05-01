@@ -1,422 +1,209 @@
+const recorderManager = wx.getRecorderManager ? wx.getRecorderManager() : null;
+const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
+
 const CATEGORY_RULES = [
-  { name: '美食', keywords: ['吃', '喝', '咖啡', '奶茶', '火锅', '外卖', '美团', '餐厅', '早餐', '午餐', '晚餐', '甜品'] },
-  { name: '电影', keywords: ['电影', '影院', '追剧', '剧集', '综艺', '纪录片'] },
-  { name: '学习', keywords: ['学习', '复习', '课程', '读书', '笔记', '考试', '刷题', '作业'] },
-  { name: '工作', keywords: ['工作', '需求', '项目', '开会', '汇报', '客户', '加班'] },
-  { name: '运动', keywords: ['运动', '跑步', '健身', '游泳', '骑行', '瑜伽', '羽毛球', '篮球'] }
+  { name: '工作', keywords: ['工作', '加班', '会议', '项目', '报告', '任务', '汇报', '上班', '同事', '领导'] },
+  { name: '阅读', keywords: ['读书', '阅读', '书', '小说', '文章', '读', '看', '章节'] },
+  { name: '运动', keywords: ['跑步', '运动', '健身', '游泳', '散步', '锻炼', '公里', '瑜伽'] },
+  { name: '健康', keywords: ['健康', '医院', '体检', '睡眠', '饮食', '药'] },
+  { name: '关系', keywords: ['朋友', '家人', '聊天', '约会', '聚会', '陪伴'] },
+  { name: '学习', keywords: ['学习', '课程', '考试', '练习', '笔记', '复习'] }
 ];
-
-function padNumber(value) {
-  return value < 10 ? `0${value}` : `${value}`;
-}
-
-function formatRecordDate(date) {
-  return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
-}
-
-function formatMonthDay(date) {
-  return `${padNumber(date.getMonth() + 1)}-${padNumber(date.getDate())}`;
-}
-
-function formatRecordDateTime(date) {
-  const hours = date.getHours();
-  const period = hours >= 12 ? '下午' : '上午';
-  const displayHour = hours % 12 || 12;
-  return `${formatRecordDate(date)}${period}${displayHour}:${padNumber(date.getMinutes())}:${padNumber(date.getSeconds())}`;
-}
 
 function inferCategory(text) {
   const source = String(text || '').toLowerCase();
-  if (!source) {
-    return '其他';
-  }
+  if (!source) return '其他';
   for (const rule of CATEGORY_RULES) {
-    const matched = rule.keywords.some(keyword => source.includes(String(keyword).toLowerCase()));
-    if (matched) {
-      return rule.name;
-    }
+    if (rule.keywords.some(k => source.includes(k))) return rule.name;
   }
   return '其他';
 }
 
-function getWeekStartTimestamp(now = new Date()) {
-  const date = new Date(now);
-  const day = date.getDay();
-  const diffToMonday = day === 0 ? 6 : day - 1;
-  date.setDate(date.getDate() - diffToMonday);
-  date.setHours(0, 0, 0, 0);
-  return date.getTime();
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+function formatTime(date) {
+  return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
 }
 
-function formatWeekRangeLabel(startTs, endTs) {
-  const start = new Date(startTs);
-  const end = new Date(endTs);
-  const startText = `${start.getMonth() + 1}/${start.getDate()}`;
-  const endText = `${end.getMonth() + 1}/${end.getDate()}`;
-  return `本周 ${startText}-${endText}`;
+function getGreetingText() {
+  const h = new Date().getHours();
+  if (h < 6) return '夜深了 🌙';
+  if (h < 9) return '早上好 ☀️';
+  if (h < 12) return '上午好 🌤';
+  if (h < 14) return '中午好 ☀️';
+  if (h < 18) return '下午好 🌅';
+  if (h < 22) return '晚上好 🌆';
+  return '夜深了 🌙';
 }
 
-function formatTimelineDay(date) {
-  return `${date.getMonth() + 1}/${date.getDate()}`;
-}
-
-function formatTimelineTime(date) {
-  return `${padNumber(date.getHours())}:${padNumber(date.getMinutes())}`;
-}
-
-function getTimelineContent(item) {
-  const text = String(item.content || '').trim();
-  if (text) {
-    return text;
-  }
-  const transcript = String(item.transcript || '').trim();
-  if (transcript) {
-    return transcript;
-  }
-  return item.recordType === 'audio' ? '[语音记录]' : '[无文本内容]';
+function getDateTitle() {
+  const now = new Date();
+  const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+  return `${now.getMonth() + 1}月${now.getDate()}日，星期${weekDays[now.getDay()]}`;
 }
 
 Page({
   data: {
-    currentTab: 'quick',
-    currentTabIndex: 0,
+    greetingText: '',
+    dateTitle: '',
+    dateBtnLabel: '今天',
+    aiSummaryText: '今天你的心情整体偏向平静与满足 🌿 上午完成了两项工作任务，午后享受了一段放松的阅读时光。记得给自己一点赞赏，每一天的努力都值得被看见 ✨',
+    todayRecords: [],
     inputValue: '',
-    todayLabel: formatRecordDate(new Date()),
-    inspirationLoading: false,
-    inspirationMonthDay: formatMonthDay(new Date()),
-    inspirationFact: '',
-    inspirationMemory: null,
-    inspirationFacts: [],
-    inspirationMemories: [],
-    inspirationError: '',
-    recordCount: 0,
-    audioCount: 0,
-    summaryCount: 0,
-    weeklyNotes: [],
-    weeklyNotesLoading: false,
-    weeklyNotesError: '',
-    weekRangeLabel: '',
-    selectedMood: '😌 平静',
-    streakDays: 0
+    showInputModal: false,
+    modalInputValue: '',
+    isRecording: false,
+    voiceStatus: ''
   },
 
   onLoad() {
-    this.getTodayInspiration();
-    this.getStats();
-    this.getWeeklyNotes();
+    this.setData({
+      greetingText: getGreetingText(),
+      dateTitle: getDateTitle()
+    });
+    this.getTodayRecords();
   },
 
   onShow() {
-    this.getStats();
-    this.getWeeklyNotes();
-  },
-
-  switchHomeTab(e) {
-    const tab = e.currentTarget.dataset.tab;
-    const index = Number(e.currentTarget.dataset.index || 0);
-    if (!tab || tab === this.data.currentTab) {
-      return;
-    }
     this.setData({
-      currentTab: tab,
-      currentTabIndex: index
+      greetingText: getGreetingText(),
+      dateTitle: getDateTitle()
     });
+    this.getTodayRecords();
   },
 
-  onHomeSwiperChange(e) {
-    const index = Number(e.detail.current || 0);
-    const order = ['quick', 'inspiration', 'stats'];
-    const tab = order[index] || 'quick';
-    this.setData({
-      currentTab: tab,
-      currentTabIndex: index
-    });
-  },
+  getTodayRecords() {
+    const db = wx.cloud.database();
+    const _ = db.command;
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
-  inputContent(e) {
-    this.setData({
-      inputValue: e.detail.value
-    });
-  },
-
-  selectMood(e) {
-    const mood = e.currentTarget.dataset.mood || '';
-    if (this.data.selectedMood === mood) {
-      this.setData({ selectedMood: '' });
-    } else {
-      this.setData({ selectedMood: mood });
-    }
-  },
-
-  saveInput() {
-    const content = String(this.data.inputValue || '').trim();
-    if (!content) {
-      wx.showToast({
-        title: '请输入内容',
-        icon: 'none'
+    db.collection('records')
+      .where({ timestamp: _.gte(start.getTime()).and(_.lte(end.getTime())) })
+      .orderBy('timestamp', 'desc')
+      .limit(50)
+      .get({
+        success: res => {
+          const records = (res.data || []).map(item => ({
+            _id: item._id,
+            timeText: formatTime(new Date(item.timestamp)),
+            contentText: item.transcript || item.content || '',
+            category: item.category || ''
+          }));
+          this.setData({ todayRecords: records });
+        },
+        fail: () => {
+          this.setData({ todayRecords: [] });
+        }
       });
-      return;
-    }
-    this.saveRecord(content);
+  },
+
+  onInputChange(e) {
+    this.setData({ inputValue: e.detail.value });
+  },
+
+  onInputConfirm(e) {
+    const content = String(e.detail.value || '').trim();
+    if (!content) return;
+    this.saveRecordContent(content);
+    this.setData({ inputValue: '' });
+  },
+
+  onAddTap() {
     this.setData({
-      inputValue: ''
+      showInputModal: true,
+      modalInputValue: '',
+      voiceStatus: ''
     });
   },
 
-  saveRecord(content) {
+  onDateTap() {
+    wx.showToast({ title: '日期选择', icon: 'none' });
+  },
+
+  onModalInput(e) {
+    this.setData({ modalInputValue: e.detail.value });
+  },
+
+  closeInputModal() {
+    if (this.data.isRecording && recorderManager) {
+      recorderManager.stop();
+    }
+    this.setData({
+      showInputModal: false,
+      isRecording: false,
+      voiceStatus: ''
+    });
+  },
+
+  preventTap() {},
+
+  saveRecord() {
+    const content = String(this.data.modalInputValue || '').trim();
+    if (!content) {
+      wx.showToast({ title: '请输入内容', icon: 'none' });
+      return;
+    }
+    this.saveRecordContent(content);
+    this.setData({
+      showInputModal: false,
+      modalInputValue: '',
+      voiceStatus: ''
+    });
+  },
+
+  saveRecordContent(content, extra = {}) {
     const db = wx.cloud.database();
     const now = new Date();
-    const createTime = formatRecordDateTime(now);
     const timestamp = now.getTime();
-    const date = formatRecordDate(now);
-    const monthDay = formatMonthDay(now);
-    const category = inferCategory(content);
-    const mood = this.data.selectedMood;
+    const createTime = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())} ${formatTime(now)}`;
+    const category = inferCategory(extra.transcript || content);
 
     db.collection('records').add({
       data: {
         content: content,
         createTime: createTime,
-        date: date,
         timestamp: timestamp,
         year: now.getFullYear(),
-        monthDay: monthDay,
+        monthDay: `${now.getMonth() + 1}/${now.getDate()}`,
         category: category,
-        mood: mood,
-        recordType: 'text',
-        audioFileID: '',
-        audioDuration: 0,
-        transcript: ''
+        recordType: extra.recordType || 'text',
+        audioFileID: extra.audioFileID || '',
+        audioDuration: extra.audioDuration || 0,
+        transcript: extra.transcript || ''
       },
       success: () => {
-        wx.showToast({
-          title: '保存成功',
-          icon: 'success'
-        });
-        this.setData({ selectedMood: '' });
-        this.getStats();
+        wx.showToast({ title: '保存成功', icon: 'success' });
+        this.getTodayRecords();
       },
       fail: () => {
-        wx.showToast({
-          title: '保存失败',
-          icon: 'none'
-        });
+        wx.showToast({ title: '保存失败', icon: 'none' });
       }
     });
   },
 
-  refreshInspiration() {
-    const facts = this.data.inspirationFacts || [];
-    const memories = this.data.inspirationMemories || [];
-    let inspirationFact = '';
-    let inspirationMemory = null;
-    if (facts.length) {
-      const factIndex = Math.floor(Math.random() * facts.length);
-      inspirationFact = facts[factIndex];
+  toggleVoiceInput() {
+    if (!recorderManager) {
+      wx.showToast({ title: '当前环境不支持语音', icon: 'none' });
+      return;
     }
-    if (memories.length) {
-      const memoryIndex = Math.floor(Math.random() * memories.length);
-      inspirationMemory = memories[memoryIndex];
+    if (this.data.isRecording) {
+      recorderManager.stop();
+      return;
     }
-    this.setData({
-      inspirationFact,
-      inspirationMemory,
-      inspirationError: ''
-    });
-  },
-
-  getTodayInspiration() {
-    this.setData({
-      inspirationLoading: true,
-      inspirationError: ''
-    });
-    wx.cloud.callFunction({
-      name: 'getTodayInspiration',
-      success: res => {
-        const result = res.result || {};
-        if (!result.success) {
-          this.setData({
-            inspirationLoading: false,
-            inspirationError: result.message || '灵感获取失败',
-            inspirationMonthDay: result.monthDay || formatMonthDay(new Date()),
-            inspirationFact: '',
-            inspirationMemory: null,
-            inspirationFacts: [],
-            inspirationMemories: []
-          });
-          return;
-        }
-        const facts = Array.isArray(result.facts) ? result.facts : (result.fact ? [result.fact] : []);
-        const memories = Array.isArray(result.memories) ? result.memories : [];
-        const displayFact = facts.length ? facts[0] : '';
-        const displayMemory = memories.length ? memories[0] : null;
-        this.setData({
-          inspirationLoading: false,
-          inspirationMonthDay: result.monthDay || formatMonthDay(new Date()),
-          inspirationFact: displayFact,
-          inspirationMemory: displayMemory,
-          inspirationFacts: facts,
-          inspirationMemories: memories,
-          inspirationError: ''
-        });
+    wx.authorize({
+      scope: 'scope.record',
+      success: () => {
+        recorderManager.start({ duration: 60000, format: 'mp3' });
       },
       fail: () => {
-        this.setData({
-          inspirationLoading: false,
-          inspirationError: '灵感获取失败'
+        wx.showModal({
+          title: '需要麦克风权限',
+          content: '开启麦克风权限后，才可以录制语音记录。',
+          success: res => { if (res.confirm) wx.openSetting(); }
         });
       }
-    });
-  },
-
-  getStats() {
-    const db = wx.cloud.database();
-
-    db.collection('records').count({
-      success: res => {
-        this.setData({
-          recordCount: res.total
-        });
-      }
-    });
-
-    db.collection('records').where({
-      recordType: 'audio'
-    }).count({
-      success: res => {
-        this.setData({
-          audioCount: res.total
-        });
-      }
-    });
-
-    db.collection('summaryHistory').count({
-      success: res => {
-        this.setData({
-          summaryCount: res.total
-        });
-      }
-    });
-
-    this.getStreakDays();
-  },
-
-  getStreakDays() {
-    const db = wx.cloud.database();
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const oneDayMs = 24 * 60 * 60 * 1000;
-
-    db.collection('records')
-      .orderBy('timestamp', 'desc')
-      .limit(100)
-      .get({
-        success: res => {
-          const records = Array.isArray(res.data) ? res.data : [];
-          if (!records.length) {
-            this.setData({ streakDays: 0 });
-            return;
-          }
-
-          const uniqueDays = new Set();
-          records.forEach(record => {
-            const date = new Date(record.timestamp);
-            const dayKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-            uniqueDays.add(dayKey);
-          });
-
-          let streak = 0;
-          let checkDate = new Date(today);
-
-          for (let i = 0; i < 365; i++) {
-            const dayKey = `${checkDate.getFullYear()}-${checkDate.getMonth()}-${checkDate.getDate()}`;
-            if (uniqueDays.has(dayKey)) {
-              streak++;
-              checkDate.setTime(checkDate.getTime() - oneDayMs);
-            } else {
-              break;
-            }
-          }
-
-          this.setData({ streakDays: streak });
-        },
-        fail: () => {
-          this.setData({ streakDays: 0 });
-        }
-      });
-  },
-
-  getWeeklyNotes() {
-    const db = wx.cloud.database();
-    const _ = db.command;
-    const now = Date.now();
-    const weekStart = getWeekStartTimestamp(new Date(now));
-    this.setData({
-      weeklyNotesLoading: true,
-      weeklyNotesError: '',
-      weekRangeLabel: formatWeekRangeLabel(weekStart, now)
-    });
-    db.collection('records')
-      .where({
-        timestamp: _.gte(weekStart).and(_.lte(now))
-      })
-      .orderBy('timestamp', 'asc')
-      .limit(100)
-      .get({
-        success: res => {
-          const records = Array.isArray(res.data) ? res.data : [];
-          const weeklyNotes = records.map(item => {
-            const date = new Date(item.timestamp || Date.now());
-            return {
-              id: item._id,
-              dayLabel: formatTimelineDay(date),
-              timeLabel: formatTimelineTime(date),
-              content: getTimelineContent(item)
-            };
-          });
-          this.setData({
-            weeklyNotesLoading: false,
-            weeklyNotesError: '',
-            weeklyNotes
-          });
-        },
-        fail: () => {
-          this.setData({
-            weeklyNotesLoading: false,
-            weeklyNotesError: '本周时间线加载失败',
-            weeklyNotes: []
-          });
-        }
-      });
-  },
-
-  goRecord() {
-    wx.switchTab({
-      url: '/pages/record/index'
-    });
-  },
-
-  goRecordWithInspiration() {
-    const inspirationText = String(this.data.inspirationFact || '').trim();
-    if (inspirationText) {
-      wx.setStorageSync('recordInitialContent', inspirationText);
-    }
-    wx.setStorageSync('recordInitialView', 'write');
-    wx.switchTab({
-      url: '/pages/record/index'
-    });
-  },
-
-  goSummary() {
-    wx.switchTab({
-      url: '/pages/summary/index'
-    });
-  },
-
-  goMine() {
-    wx.switchTab({
-      url: '/pages/mine/index'
     });
   }
 });
-

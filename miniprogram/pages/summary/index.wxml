@@ -1,113 +1,112 @@
-<view class="container">
-  <view class="head-row">
-    <text class="title">总结</text>
-    <view class="seg-mini">
-      <text class="seg-mini-item seg-mini-item-active">周</text>
-      <text class="seg-mini-item">月</text>
-      <text class="seg-mini-item">年</text>
+<view class="page">
+  <scroll-view class="scroll-area" scroll-y enhanced show-scrollbar="false" scroll-x="false" enable-flex>
+    <view class="header">
+      <text class="header-title">洞察</text>
+      <view class="share-btn">
+        <text class="share-icon">↗</text>
+      </view>
     </view>
-  </view>
 
-  <view class="switch-bar">
-    <view class="switch-item {{currentTab === 'generate' ? 'switch-item-active' : ''}}" data-tab="generate" data-index="0" bindtap="switchSummaryTab">生成</view>
-    <view class="switch-item {{currentTab === 'history' ? 'switch-item-active' : ''}}" data-tab="history" data-index="1" bindtap="switchSummaryTab">历史</view>
-    <view class="switch-item {{currentTab === 'guide' ? 'switch-item-active' : ''}}" data-tab="guide" data-index="2" bindtap="switchSummaryTab">说明</view>
-  </view>
-
-  <swiper class="content-swiper" current="{{currentTabIndex}}" bindchange="onTabSwiperChange" duration="260">
-    <swiper-item>
-      <view class="kpi-row">
-        <view class="kpi-item">
-          <text class="kpi-label">历史报告</text>
-          <text class="kpi-value">{{summaryHistory.length}}</text>
-          <text class="kpi-delta">已累计</text>
-        </view>
-        <view class="kpi-item">
-          <text class="kpi-label">当前年份</text>
-          <text class="kpi-value">{{selectedYear}}</text>
-          <text class="kpi-delta">可切换</text>
-        </view>
+    <view class="segment-control">
+      <view 
+        class="seg-tab {{currentPeriod === 'week' ? 'seg-tab-active' : ''}}" 
+        data-period="week" 
+        bindtap="selectPeriod"
+      >
+        <text class="seg-text">周度</text>
       </view>
-
-      <view class="card trend-card">
-        <view class="row-head">
-          <text class="card-title">本周节奏</text>
-          <text class="card-meta">自动生成</text>
-        </view>
-        <view class="bars">
-          <view class="bar h1"></view>
-          <view class="bar h2"></view>
-          <view class="bar h3"></view>
-          <view class="bar h4"></view>
-          <view class="bar h5"></view>
-          <view class="bar h6"></view>
-          <view class="bar h7"></view>
-        </view>
-        <view class="legend">
-          <text>一</text><text>二</text><text>三</text><text>四</text><text>五</text><text>六</text><text>日</text>
-        </view>
+      <view 
+        class="seg-tab {{currentPeriod === 'month' ? 'seg-tab-active' : ''}}" 
+        data-period="month" 
+        bindtap="selectPeriod"
+      >
+        <text class="seg-text">月度</text>
       </view>
-
-      <view class="report-card">
-        <text class="report-subtitle">AI 总结 · 一句话</text>
-        <text class="report-title">你这周在效率与松弛之间找到了更稳的平衡。</text>
-        <view class="chip-row">
-          <text class="chip">#工作</text>
-          <text class="chip">#健康</text>
-          <text class="chip">#关系</text>
-        </view>
-        <view class="year-selector">
-          <text class="year-label">年报年份</text>
-          <picker mode="selector" range="{{yearOptions}}" value="{{selectedYearIndex}}" bindchange="onYearChange">
-            <view class="year-picker-value">{{selectedYear}}年</view>
-          </picker>
-        </view>
-        <view class="summary-buttons">
-          <button class="summary-btn summary-btn-accent" bindtap="getDailySummary">生成日报</button>
-          <button class="summary-btn summary-btn-light" bindtap="getWeeklySummary">生成周报</button>
-          <button class="summary-btn summary-btn-light" bindtap="getYearlySummary">生成年报</button>
-        </view>
+      <view 
+        class="seg-tab {{currentPeriod === 'year' ? 'seg-tab-active' : ''}}" 
+        data-period="year" 
+        bindtap="selectPeriod"
+      >
+        <text class="seg-text">年度</text>
       </view>
-    </swiper-item>
+    </view>
 
-    <swiper-item>
-      <view class="card history-card">
-        <view class="row-head">
-          <text class="card-title">历史报告</text>
-          <text class="card-meta">{{summaryHistory.length}} 条</text>
+    <view class="ai-summary-card">
+      <view class="card-cover">
+        <text class="cover-emoji">🌸</text>
+        <text class="cover-period">{{periodLabel}}</text>
+      </view>
+      <view class="card-body">
+        <view class="ai-label">
+          <text class="ai-sparkle">✨</text>
+          <text class="ai-label-text">AI {{periodName}}摘要</text>
         </view>
-        <scroll-view class="summary-scroll" scroll-y enhanced show-scrollbar="false">
-          <view wx:if="{{summaryHistory.length > 0}}">
-            <view class="summary-item" wx:for="{{summaryHistory}}" wx:key="_id" bindtap="openSummaryDetail" data-id="{{item._id}}">
-              <view class="summary-item-header">
-                <text class="summary-item-title">{{item.historyTitle}}</text>
-                <text class="summary-item-date">点击查看</text>
-              </view>
-              <view class="summary-item-footer">
-                <button class="copy-btn" catchtap="copySummary" data-id="{{item._id}}">
-                  <text class="copy-btn-text">复制</text>
-                </button>
-                <button class="delete-btn" catchtap="deleteSummary" data-id="{{item._id}}">
-                  <text class="copy-btn-text">删除</text>
-                </button>
-              </view>
+        <text class="summary-text">{{summaryText}}</text>
+
+        <view class="divider"></view>
+
+        <view class="themes-section">
+          <text class="section-label">关键主题</text>
+          <view class="theme-tags">
+            <view class="theme-tag tag-orange">
+              <text class="tag-emoji">📖</text>
+              <text class="tag-text">阅读</text>
+            </view>
+            <view class="theme-tag tag-green">
+              <text class="tag-emoji">🏃</text>
+              <text class="tag-text">运动</text>
+            </view>
+            <view class="theme-tag tag-blue">
+              <text class="tag-emoji">💼</text>
+              <text class="tag-text">工作</text>
             </view>
           </view>
-          <view wx:else class="empty-state">
-            <text class="empty-title">暂无历史总结</text>
-            <text class="empty-desc">生成总结后，历史记录会显示在这里</text>
-          </view>
-        </scroll-view>
-      </view>
-    </swiper-item>
+        </view>
 
-    <swiper-item>
-      <view class="card guide-card">
-        <text class="guide-title">使用说明</text>
-        <text class="guide-item">1. 在「生成」中点击日报 / 周报 / 年报，自动进入详情页。</text>
-        <text class="guide-item">2. 在「历史」中可查看、复制、删除既有报告。</text>
-        <text class="guide-item">3. 年报可切换年份后再生成。</text>
+        <view class="divider"></view>
+
+        <view class="highlights-section">
+          <text class="section-label">精彩集锦</text>
+          <view class="highlight-item">
+            <text class="highlight-dot">✦</text>
+            <text class="highlight-text">完成了 Q2 项目报告，获得团队好评</text>
+          </view>
+          <view class="highlight-item">
+            <text class="highlight-dot">✦</text>
+            <text class="highlight-text">读完《小王子》，写下 3 段感悟笔记</text>
+          </view>
+          <view class="highlight-item">
+            <text class="highlight-dot">✦</text>
+            <text class="highlight-text">本周累计跑步 12 公里，保持运动习惯</text>
+          </view>
+        </view>
       </view>
-    </swiper-item>
-  </swiper>
+    </view>
+
+    <view class="mini-calendar">
+      <view class="cal-header">
+        <text class="cal-arrow" bindtap="prevMonth">‹</text>
+        <text class="cal-title">{{calendarTitle}}</text>
+        <text class="cal-arrow" bindtap="nextMonth">›</text>
+      </view>
+      <view class="cal-weekdays">
+        <text class="cal-wd" wx:for="{{weekDays}}" wx:key="*this">{{item}}</text>
+      </view>
+      <view class="cal-weeks">
+        <view class="cal-week" wx:for="{{calendarDays}}" wx:key="weekIndex">
+          <view 
+            class="cal-day {{item2.isCurrentMonth ? '' : 'cal-day-other'}} {{item2.isToday ? 'cal-day-today' : ''}} {{item2.hasRecord ? 'cal-day-has' : ''}}" 
+            wx:for="{{item.days}}" 
+            wx:for-item="item2" 
+            wx:key="day"
+          >
+            <text class="cal-day-text">{{item2.day || ''}}</text>
+            <view wx:if="{{item2.hasRecord}}" class="cal-day-dot"></view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="bottom-spacer"></view>
+  </scroll-view>
 </view>
