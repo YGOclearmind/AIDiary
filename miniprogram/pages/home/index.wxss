@@ -107,22 +107,21 @@
 
 .timeline-feed {
   display: flex;
-  gap: 20rpx;
+  flex-direction: column;
   margin-top: 24rpx;
 }
 
-.timeline-dots {
+.timeline-row {
+  display: flex;
+  gap: 20rpx;
+}
+
+.timeline-dot-col {
   display: flex;
   flex-direction: column;
   align-items: center;
   width: 48rpx;
   flex-shrink: 0;
-}
-
-.dot-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
 }
 
 .dot {
@@ -135,24 +134,16 @@
 
 .dot-active {
   background: var(--warm-accent);
-  width: 20rpx;
-  height: 20rpx;
 }
 
 .dot-line {
+  flex: 1;
   width: 4rpx;
-  height: 160rpx;
   background: #E8DDD0;
 }
 
-.timeline-cards {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 24rpx;
-}
-
 .entry-card {
+  flex: 1;
   padding: 28rpx;
   border-radius: 28rpx;
   background: var(--warm-bg-card);
@@ -160,6 +151,7 @@
   display: flex;
   flex-direction: column;
   gap: 16rpx;
+  margin-bottom: 24rpx;
 }
 
 .entry-time {
@@ -221,8 +213,8 @@
   height: 92rpx;
 }
 
-.add-btn {
-  width: 76rpx;
+.submit-btn {
+  padding: 0 36rpx;
   height: 76rpx;
   border-radius: 38rpx;
   background: linear-gradient(180deg, #F0A050 0%, #E89040 100%);
@@ -233,8 +225,8 @@
   flex-shrink: 0;
 }
 
-.add-icon {
-  font-size: 36rpx;
+.submit-btn-text {
+  font-size: 28rpx;
   color: #fff;
   font-weight: 700;
 }
@@ -274,113 +266,111 @@
   font-weight: 500;
 }
 
-.modal-mask {
+.cal-mask {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.4);
   z-index: 200;
   display: flex;
   align-items: flex-end;
   justify-content: center;
 }
 
-.modal-content {
+.cal-popup {
   width: 100%;
   background: #fff;
   border-radius: 40rpx 40rpx 0 0;
   padding: 40rpx;
   padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
+  box-shadow: 0 -8rpx 40rpx rgba(0, 0, 0, 0.1);
 }
 
-.modal-header {
+.cal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 32rpx;
+  margin-bottom: 28rpx;
 }
 
-.modal-title {
-  font-size: 32rpx;
+.cal-arrow {
+  font-size: 36rpx;
+  color: var(--warm-text-muted);
+  padding: 8rpx 20rpx;
+}
+
+.cal-title {
+  font-size: 30rpx;
   font-weight: 700;
   color: var(--warm-text);
 }
 
-.modal-close {
-  width: 56rpx;
-  height: 56rpx;
-  border-radius: 28rpx;
-  background: var(--warm-bg-input);
+.cal-weekdays {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 36rpx;
-  color: var(--warm-text-muted);
+  justify-content: space-around;
+  margin-bottom: 16rpx;
 }
 
-.modal-textarea {
-  width: 100%;
-  min-height: 240rpx;
-  padding: 24rpx;
-  border-radius: 24rpx;
-  background: var(--warm-bg-input);
-  font-size: 28rpx;
-  color: var(--warm-text);
-  line-height: 1.6;
-  box-sizing: border-box;
-}
-
-.modal-placeholder {
-  color: var(--warm-text-placeholder);
-}
-
-.modal-actions {
-  display: flex;
-  gap: 20rpx;
-  margin-top: 24rpx;
-}
-
-.modal-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10rpx;
-  height: 88rpx;
-  border-radius: 44rpx;
-  font-size: 28rpx;
-  font-weight: 600;
-}
-
-.modal-btn::after {
-  border: none;
-}
-
-.modal-btn-voice {
-  width: 200rpx;
-  background: var(--warm-bg-input);
-  color: var(--warm-text-sec);
-}
-
-.modal-btn-save {
+.cal-wd {
   flex: 1;
-  background: linear-gradient(180deg, #F0A050 0%, #E89040 100%);
-  color: #fff;
-  box-shadow: 0 8rpx 24rpx rgba(232, 144, 64, 0.25);
+  text-align: center;
+  font-size: 22rpx;
+  color: #C0B0A0;
+  font-weight: 500;
 }
 
-.modal-btn-icon {
-  font-size: 28rpx;
+.cal-weeks {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
 }
 
-.modal-btn-text {
-  font-size: 28rpx;
+.cal-week {
+  display: flex;
+  justify-content: space-around;
 }
 
-.voice-status {
-  display: block;
-  margin-top: 16rpx;
-  font-size: 24rpx;
-  color: var(--warm-text-muted);
+.cal-day {
+  flex: 1;
+  height: 72rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border-radius: 16rpx;
+}
+
+.cal-day-text {
+  font-size: 26rpx;
+  color: #5A5048;
+}
+
+.cal-day-other .cal-day-text {
+  color: #C0B0A0;
+}
+
+.cal-day-today .cal-day-text {
+  color: var(--warm-accent);
+  font-weight: 700;
+}
+
+.cal-day-selected {
+  background: linear-gradient(135deg, #FFF5E6 0%, #FFECD2 100%);
+}
+
+.cal-day-selected .cal-day-text {
+  color: var(--warm-accent-dark);
+  font-weight: 700;
+}
+
+.cal-day-has .cal-day-dot {
+  width: 8rpx;
+  height: 8rpx;
+  border-radius: 4rpx;
+  background: var(--warm-accent);
+  position: absolute;
+  bottom: 4rpx;
 }

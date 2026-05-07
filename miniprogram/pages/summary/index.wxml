@@ -83,30 +83,6 @@
       </view>
     </view>
 
-    <view class="mini-calendar">
-      <view class="cal-header">
-        <text class="cal-arrow" bindtap="prevMonth">‹</text>
-        <text class="cal-title">{{calendarTitle}}</text>
-        <text class="cal-arrow" bindtap="nextMonth">›</text>
-      </view>
-      <view class="cal-weekdays">
-        <text class="cal-wd" wx:for="{{weekDays}}" wx:key="*this">{{item}}</text>
-      </view>
-      <view class="cal-weeks">
-        <view class="cal-week" wx:for="{{calendarDays}}" wx:key="weekIndex">
-          <view 
-            class="cal-day {{item2.isCurrentMonth ? '' : 'cal-day-other'}} {{item2.isToday ? 'cal-day-today' : ''}} {{item2.hasRecord ? 'cal-day-has' : ''}}" 
-            wx:for="{{item.days}}" 
-            wx:for-item="item2" 
-            wx:key="day"
-          >
-            <text class="cal-day-text">{{item2.day || ''}}</text>
-            <view wx:if="{{item2.hasRecord}}" class="cal-day-dot"></view>
-          </view>
-        </view>
-      </view>
-    </view>
-
     <view class="bottom-spacer"></view>
   </scroll-view>
 </view>
