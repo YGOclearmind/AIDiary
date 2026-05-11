@@ -45,6 +45,10 @@ function toDateString(date) {
   return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 }
 
+function formatRecordDate(date) {
+  return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
+}
+
 function generateCalendarDays(year, month, recordDays, selectedDate) {
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
@@ -285,8 +289,19 @@ Page({
   saveRecordContent(content, extra = {}) {
     const db = wx.cloud.database();
     const now = new Date();
-    const timestamp = now.getTime();
-    const createTime = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())} ${formatTime(now)}`;
+    const selected = this.data.selectedDate || this.data.todayStr || toDateString(now);
+    const selectedDate = this.parseDate(selected);
+    const recordDate = new Date(
+      selectedDate.getFullYear(),
+      selectedDate.getMonth(),
+      selectedDate.getDate(),
+      now.getHours(),
+      now.getMinutes(),
+      now.getSeconds(),
+      now.getMilliseconds()
+    );
+    const timestamp = recordDate.getTime();
+    const createTime = `${recordDate.getFullYear()}-${pad2(recordDate.getMonth() + 1)}-${pad2(recordDate.getDate())} ${formatTime(recordDate)}`;
     const category = inferCategory(extra.transcript || content);
 
     db.collection('records').add({
@@ -294,8 +309,9 @@ Page({
         content: content,
         createTime: createTime,
         timestamp: timestamp,
-        year: now.getFullYear(),
-        monthDay: `${now.getMonth() + 1}/${now.getDate()}`,
+        date: formatRecordDate(recordDate),
+        year: recordDate.getFullYear(),
+        monthDay: `${recordDate.getMonth() + 1}/${recordDate.getDate()}`,
         category: category,
         recordType: extra.recordType || 'text',
         audioFileID: extra.audioFileID || '',

@@ -9,25 +9,25 @@
 
     <view class="segment-control">
       <view 
+        class="seg-tab {{currentPeriod === 'day' ? 'seg-tab-active' : ''}}" 
+        data-period="day" 
+        bindtap="selectPeriod"
+      >
+        <text class="seg-text">昨日</text>
+      </view>
+      <view 
         class="seg-tab {{currentPeriod === 'week' ? 'seg-tab-active' : ''}}" 
         data-period="week" 
         bindtap="selectPeriod"
       >
-        <text class="seg-text">周度</text>
-      </view>
-      <view 
-        class="seg-tab {{currentPeriod === 'month' ? 'seg-tab-active' : ''}}" 
-        data-period="month" 
-        bindtap="selectPeriod"
-      >
-        <text class="seg-text">月度</text>
+        <text class="seg-text">上周</text>
       </view>
       <view 
         class="seg-tab {{currentPeriod === 'year' ? 'seg-tab-active' : ''}}" 
         data-period="year" 
         bindtap="selectPeriod"
       >
-        <text class="seg-text">年度</text>
+        <text class="seg-text">去年</text>
       </view>
     </view>
 
@@ -41,43 +41,29 @@
           <text class="ai-sparkle">✨</text>
           <text class="ai-label-text">AI {{periodName}}摘要</text>
         </view>
-        <text class="summary-text">{{summaryText}}</text>
+        <view wx:if="{{summaryLoading}}" class="state-text">内容加载中...</view>
+        <view wx:elif="{{summaryError}}" class="state-text">{{summaryError}}</view>
+        <text wx:else class="summary-text">{{summaryText}}</text>
 
         <view class="divider"></view>
 
-        <view class="themes-section">
+        <view wx:if="{{themeTags.length}}" class="themes-section">
           <text class="section-label">关键主题</text>
           <view class="theme-tags">
-            <view class="theme-tag tag-orange">
-              <text class="tag-emoji">📖</text>
-              <text class="tag-text">阅读</text>
-            </view>
-            <view class="theme-tag tag-green">
-              <text class="tag-emoji">🏃</text>
-              <text class="tag-text">运动</text>
-            </view>
-            <view class="theme-tag tag-blue">
-              <text class="tag-emoji">💼</text>
-              <text class="tag-text">工作</text>
+            <view wx:for="{{themeTags}}" wx:key="name" class="theme-tag {{item.cls}}">
+              <text class="tag-emoji">{{item.emoji}}</text>
+              <text class="tag-text">{{item.name}}</text>
             </view>
           </view>
         </view>
 
-        <view class="divider"></view>
+        <view wx:if="{{highlights.length}}" class="divider"></view>
 
-        <view class="highlights-section">
+        <view wx:if="{{highlights.length}}" class="highlights-section">
           <text class="section-label">精彩集锦</text>
-          <view class="highlight-item">
+          <view wx:for="{{highlights}}" wx:key="*this" class="highlight-item">
             <text class="highlight-dot">✦</text>
-            <text class="highlight-text">完成了 Q2 项目报告，获得团队好评</text>
-          </view>
-          <view class="highlight-item">
-            <text class="highlight-dot">✦</text>
-            <text class="highlight-text">读完《小王子》，写下 3 段感悟笔记</text>
-          </view>
-          <view class="highlight-item">
-            <text class="highlight-dot">✦</text>
-            <text class="highlight-text">本周累计跑步 12 公里，保持运动习惯</text>
+            <text class="highlight-text">{{item}}</text>
           </view>
         </view>
       </view>

@@ -295,6 +295,7 @@ exports.main = async (event) => {
         content: finalSummaryText,
         summaryItems,
         aiUsed,
+        userOpenid: openid,
         createTime: new Date().toLocaleString()
       }
     });
