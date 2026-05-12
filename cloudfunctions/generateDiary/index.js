@@ -232,6 +232,7 @@ exports.main = async (event, context) => {
         date: date,
         content: summaryText,
         summaryItems: summaryItems,
+        userOpenid: openid,
         createTime: new Date().toLocaleString()
       }
     });
