@@ -13,27 +13,33 @@
         data-period="day" 
         bindtap="selectPeriod"
       >
-        <text class="seg-text">昨日</text>
+        <text class="seg-text">日</text>
       </view>
       <view 
         class="seg-tab {{currentPeriod === 'week' ? 'seg-tab-active' : ''}}" 
         data-period="week" 
         bindtap="selectPeriod"
       >
-        <text class="seg-text">上周</text>
+        <text class="seg-text">周</text>
       </view>
       <view 
         class="seg-tab {{currentPeriod === 'year' ? 'seg-tab-active' : ''}}" 
         data-period="year" 
         bindtap="selectPeriod"
       >
-        <text class="seg-text">去年</text>
+        <text class="seg-text">年</text>
       </view>
     </view>
 
-    <view class="ai-summary-card">
+    <view 
+      class="ai-summary-card {{cardAnimating ? 'card-animating' : ''}}" 
+      style="transform: translateX({{cardTranslateX}}px); opacity: {{cardOpacity}};"
+      bindtouchstart="onTouchStart" 
+      bindtouchmove="onTouchMove"
+      bindtouchend="onTouchEnd"
+    >
       <view class="card-cover">
-        <text class="cover-emoji">🌸</text>
+        <text class="cover-emoji">{{coverEmoji}}</text>
         <text class="cover-period">{{periodLabel}}</text>
       </view>
       <view class="card-body">
@@ -67,6 +73,10 @@
           </view>
         </view>
       </view>
+    </view>
+
+    <view class="swipe-hint" wx:if="{{showSwipeHint}}">
+      <text class="swipe-hint-text">← 左右滑动切换时间 →</text>
     </view>
 
     <view class="bottom-spacer"></view>

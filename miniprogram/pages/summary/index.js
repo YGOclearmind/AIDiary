@@ -8,39 +8,36 @@ function formatSummaryDate(date) {
   return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
 }
 
-function getYesterdayRange() {
+function getDayRange(offset) {
   const now = new Date();
-  now.setDate(now.getDate() - 1);
+  now.setDate(now.getDate() + offset);
   return {
     start: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
     end: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999),
-    label: `${now.getMonth() + 1}月${now.getDate()}日`
+    label: offset === 0 ? '今天' : offset === -1 ? '昨天' : offset === 1 ? '明天' : `${now.getMonth() + 1}月${now.getDate()}日`
   };
 }
 
-function getLastWeekRange() {
+function getWeekRange(offset) {
   const now = new Date();
   const day = now.getDay() || 7;
-  const thisMonday = new Date(now);
-  thisMonday.setDate(now.getDate() - day + 1);
-  thisMonday.setHours(0, 0, 0, 0);
+  const thisMonday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1);
   const monday = new Date(thisMonday);
-  monday.setDate(thisMonday.getDate() - 7);
-  const sunday = new Date(thisMonday);
-  sunday.setMilliseconds(-1);
+  monday.setDate(thisMonday.getDate() + offset * 7);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
   return {
     start: monday,
-    end: sunday,
+    end: new Date(sunday.getFullYear(), sunday.getMonth(), sunday.getDate(), 23, 59, 59, 999),
     label: `${monday.getMonth() + 1}月${monday.getDate()}日 — ${sunday.getMonth() + 1}月${sunday.getDate()}日`
   };
 }
 
-function getLastYearRange() {
-  const now = new Date();
-  const year = now.getFullYear() - 1;
+function getYearRange(offset) {
+  const year = new Date().getFullYear() + offset;
   return {
     start: new Date(year, 0, 1),
-    end: new Date(year, 11, 31),
+    end: new Date(year, 11, 31, 23, 59, 59, 999),
     label: `${year}年`
   };
 }
@@ -106,41 +103,60 @@ function querySummaryHistory(db, { type, dateKey }) {
   });
 }
 
+const PERIOD_NAMES = { day: '日', week: '周', year: '年' };
+const COVER_EMOJIS = { day: '☀️', week: '🌸', year: '🎆' };
+
 Page({
   data: {
     currentPeriod: 'day',
+    periodOffset: -1,
     periodLabel: '',
-    periodName: '昨日',
+    periodName: '日',
+    coverEmoji: '☀️',
     summaryText: '',
     summaryLoading: false,
     summaryError: '',
     themeTags: [],
-    highlights: []
+    highlights: [],
+    touchStartX: 0,
+    touchStartY: 0,
+    cardTranslateX: 0,
+    cardOpacity: 1,
+    cardAnimating: false,
+    showSwipeHint: true
   },
 
   onLoad() {
     this.updatePeriodInfo();
+    this._swipeHintTimer = setTimeout(() => {
+      this.setData({ showSwipeHint: false });
+    }, 4000);
+  },
+
+  onUnload() {
+    if (this._swipeHintTimer) clearTimeout(this._swipeHintTimer);
+  },
+
+  getRange() {
+    const { currentPeriod, periodOffset } = this.data;
+    if (currentPeriod === 'day') return getDayRange(periodOffset);
+    if (currentPeriod === 'week') return getWeekRange(periodOffset);
+    return getYearRange(periodOffset);
+  },
+
+  isFutureOffset(offset) {
+    return offset > 0;
   },
 
   updatePeriodInfo() {
-    const period = this.data.currentPeriod;
-    let range;
-    let name;
-    if (period === 'day') {
-      range = getYesterdayRange();
-      name = '昨日';
-    } else if (period === 'week') {
-      range = getLastWeekRange();
-      name = '上周';
-    } else {
-      range = getLastYearRange();
-      name = '去年';
-    }
+    const { currentPeriod, periodOffset } = this.data;
+    const range = this.getRange();
     this.setData({
       periodLabel: range.label,
-      periodName: name
+      periodName: PERIOD_NAMES[currentPeriod],
+      coverEmoji: COVER_EMOJIS[currentPeriod]
     });
-    this.loadPeriodContent(period, range);
+    this.loadPeriodContent(currentPeriod, range);
   },
 
   loadPeriodContent(period, range) {
@@ -225,7 +241,76 @@ Page({
   selectPeriod(e) {
     const period = e.currentTarget.dataset.period;
     if (period === this.data.currentPeriod) return;
-    this.setData({ currentPeriod: period });
+    this.setData({ currentPeriod: period, periodOffset: -1 });
     this.updatePeriodInfo();
+  },
+
+  onTouchStart(e) {
+    if (!e.touches || !e.touches.length) return;
+    this.setData({
+      touchStartX: e.touches[0].clientX,
+      touchStartY: e.touches[0].clientY,
+      cardAnimating: false
+    });
+  },
+
+  onTouchMove(e) {
+    if (!e.touches || !e.touches.length) return;
+    const deltaX = e.touches[0].clientX - this.data.touchStartX;
+    const deltaY = e.touches[0].clientY - this.data.touchStartY;
+    if (Math.abs(deltaY) > Math.abs(deltaX)) return;
+    const dampen = 0.4;
+    const tx = deltaX * dampen;
+    const opacity = Math.max(0.5, 1 - Math.abs(deltaX) / 600);
+    this.setData({
+      cardTranslateX: tx,
+      cardOpacity: opacity
+    });
+  },
+
+  onTouchEnd(e) {
+    if (!e.changedTouches || !e.changedTouches.length) return;
+    const deltaX = e.changedTouches[0].clientX - this.data.touchStartX;
+    const deltaY = e.changedTouches[0].clientY - this.data.touchStartY;
+
+    this.setData({ cardAnimating: true });
+
+    if (Math.abs(deltaX) < 60 || Math.abs(deltaY) > Math.abs(deltaX)) {
+      this.setData({ cardTranslateX: 0, cardOpacity: 1 });
+      setTimeout(() => this.setData({ cardAnimating: false }), 300);
+      return;
+    }
+
+    const direction = deltaX > 0 ? -1 : 1;
+    const newOffset = this.data.periodOffset + direction;
+
+    if (this.isFutureOffset(newOffset)) {
+      this.setData({ cardTranslateX: 0, cardOpacity: 1 });
+      setTimeout(() => this.setData({ cardAnimating: false }), 300);
+      wx.showToast({ title: '已到达最新日期', icon: 'none', duration: 1500 });
+      return;
+    }
+
+    const exitX = direction * -300;
+    this.setData({
+      cardTranslateX: exitX,
+      cardOpacity: 0
+    });
+
+    setTimeout(() => {
+      this.setData({
+        periodOffset: newOffset,
+        cardAnimating: false,
+        cardTranslateX: direction * 300,
+        cardOpacity: 0
+      });
+
+      this.updatePeriodInfo();
+
+      setTimeout(() => {
+        this.setData({ cardAnimating: true, cardTranslateX: 0, cardOpacity: 1 });
+        setTimeout(() => this.setData({ cardAnimating: false }), 350);
+      }, 50);
+    }, 280);
   }
 });

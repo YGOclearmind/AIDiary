@@ -65,7 +65,7 @@
         value="{{inputValue}}"
         confirm-type="done"
       />
-      <view class="submit-btn" bindtap="onSubmitTap">
+      <view wx:if="{{inputValue}}" class="submit-btn" bindtap="onSubmitTap">
         <text class="submit-btn-text">完成</text>
       </view>
     </view>

@@ -82,6 +82,11 @@
   border: 2rpx solid rgba(240, 234, 224, 0.06);
   box-shadow: 0 8rpx 32rpx var(--warm-shadow-card);
   overflow: hidden;
+  will-change: transform, opacity;
+}
+
+.card-animating {
+  transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.3s ease;
 }
 
 .card-cover {
@@ -123,6 +128,12 @@
   font-size: 26rpx;
   color: #6B5B8A;
   font-weight: 600;
+}
+
+.state-text {
+  font-size: 26rpx;
+  color: var(--warm-text-muted);
+  line-height: 1.6;
 }
 
 .summary-text {
@@ -221,6 +232,25 @@
   font-size: 25rpx;
   color: #5A5048;
   line-height: 1.5;
+}
+
+.swipe-hint {
+  margin-top: 32rpx;
+  text-align: center;
+  animation: hintFade 4s ease forwards;
+}
+
+.swipe-hint-text {
+  font-size: 22rpx;
+  color: var(--warm-text-muted);
+  letter-spacing: 2rpx;
+}
+
+@keyframes hintFade {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 .bottom-spacer {
