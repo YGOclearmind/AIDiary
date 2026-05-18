@@ -8,9 +8,32 @@ cloud.init({
 const db = cloud.database();
 const _ = db.command;
 
-// 从配置文件读取AI API信息
-const config = require('./config.js');
-const { apiKey, apiUrl, epId, modelName } = config.aiConfig;
+function getEnvText(name) {
+  return String((process.env && process.env[name]) || '').trim();
+}
+
+let aiConfig = {
+  apiKey: '',
+  apiUrl: '',
+  epId: '',
+  modelName: ''
+};
+
+try {
+  const config = require('./config.js');
+  if (config && config.aiConfig) {
+    aiConfig = {
+      ...aiConfig,
+      ...config.aiConfig
+    };
+  }
+} catch (error) {
+}
+
+if (!aiConfig.apiKey) aiConfig.apiKey = getEnvText('AI_API_KEY');
+if (!aiConfig.apiUrl) aiConfig.apiUrl = getEnvText('AI_API_URL');
+if (!aiConfig.epId) aiConfig.epId = getEnvText('AI_EP_ID');
+if (!aiConfig.modelName) aiConfig.modelName = getEnvText('AI_MODEL_NAME');
 
 function normalizeText(text) {
   return String(text || '').trim();
@@ -146,6 +169,28 @@ function getRecordText(record) {
   return normalizeText(record.content);
 }
 
+function toSummaryItems(records) {
+  const grouped = {};
+  for (const record of records || []) {
+    const text = getRecordText(record);
+    if (!text) {
+      continue;
+    }
+    const title = normalizeText(record && record.category) || '其他';
+    if (!grouped[title]) {
+      grouped[title] = [];
+    }
+    if (!grouped[title].includes(text)) {
+      grouped[title].push(text);
+    }
+  }
+  return Object.keys(grouped).map(title => ({
+    title,
+    category: title,
+    points: grouped[title]
+  })).filter(item => item.points.length > 0);
+}
+
 // 调用AI API生成周报
 async function generateWeeklyWithAI(records, startDate, endDate) {
   // 提取记录内容
@@ -180,8 +225,8 @@ ${recordContents}
   
   try {
     // 调用AI API
-    const response = await axios.post(apiUrl, {
-      model: modelName,
+    const response = await axios.post(aiConfig.apiUrl, {
+      model: aiConfig.modelName,
       messages: [
         {
           role: 'system',
@@ -197,8 +242,8 @@ ${recordContents}
     }, {
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'x-volcengine-ep-id': epId
+        'Authorization': `Bearer ${aiConfig.apiKey}`,
+        'x-volcengine-ep-id': aiConfig.epId
       },
       timeout: 60000
     });
@@ -221,9 +266,9 @@ exports.config = {
 
 exports.main = async (event, context) => {
   try {
-    const { startDate, endDate, startTimestamp, endTimestamp } = event;
+    const { startDate, endDate, startTimestamp, endTimestamp, openid: targetOpenid, saveToDiaries } = event || {};
     const wxContext = cloud.getWXContext();
-    const openid = wxContext.OPENID;
+    const openid = normalizeText(targetOpenid) || wxContext.OPENID;
 
     let records;
     if (startTimestamp && endTimestamp) {
@@ -255,28 +300,35 @@ exports.main = async (event, context) => {
     }
 
     // 使用AI生成周报
-    const weeklyContent = await generateWeeklyWithAI(records.data, startDate, endDate);
+    const canUseAI = !!aiConfig.apiKey && !!aiConfig.apiUrl && !!aiConfig.epId && !!aiConfig.modelName;
+    const weeklyContent = canUseAI
+      ? await generateWeeklyWithAI(records.data, startDate, endDate)
+      : '';
     const summaryItems = parseAiTextToSummaryItems(weeklyContent);
-    const summaryText = toSummaryText(summaryItems, weeklyContent);
+    const summaryText = toSummaryText(summaryItems, weeklyContent) || toSummaryText(toSummaryItems(records.data), '');
 
     // 保存周报到数据库
-    await db.collection('diaries').add({
-      data: {
-        type: 'weekly',
-        startDate: startDate,
-        endDate: endDate,
-        content: summaryText,
-        summaryItems: summaryItems,
-        userOpenid: openid,
-        createTime: new Date().toLocaleString()
-      }
-    });
+    const shouldSave = saveToDiaries !== false;
+    if (shouldSave) {
+      await db.collection('diaries').add({
+        data: {
+          type: 'weekly',
+          startDate: startDate,
+          endDate: endDate,
+          content: summaryText,
+          summaryItems: summaryItems,
+          userOpenid: openid,
+          createTime: new Date().toLocaleString()
+        }
+      });
+    }
 
     return {
       success: true,
       weekly: summaryText,
       summaryText,
-      summaryItems
+      summaryItems,
+      aiUsed: canUseAI
     };
   } catch (error) {
     console.error('生成周报失败:', error);
