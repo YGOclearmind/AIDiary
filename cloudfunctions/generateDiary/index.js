@@ -8,9 +8,32 @@ cloud.init({
 const db = cloud.database();
 const _ = db.command;
 
-// 从配置文件读取AI API信息
-const config = require('./config.js');
-const { apiKey, apiUrl, epId, modelName } = config.aiConfig;
+function getEnvText(name) {
+  return String((process.env && process.env[name]) || '').trim();
+}
+
+let aiConfig = {
+  apiKey: '',
+  apiUrl: '',
+  epId: '',
+  modelName: ''
+};
+
+try {
+  const config = require('./config.js');
+  if (config && config.aiConfig) {
+    aiConfig = {
+      ...aiConfig,
+      ...config.aiConfig
+    };
+  }
+} catch (error) {
+}
+
+if (!aiConfig.apiKey) aiConfig.apiKey = getEnvText('AI_API_KEY');
+if (!aiConfig.apiUrl) aiConfig.apiUrl = getEnvText('AI_API_URL');
+if (!aiConfig.epId) aiConfig.epId = getEnvText('AI_EP_ID');
+if (!aiConfig.modelName) aiConfig.modelName = getEnvText('AI_MODEL_NAME');
 
 function normalizeText(text) {
   return String(text || '').trim();
@@ -134,12 +157,12 @@ ${recordContents}
   
   try {
     // 调用AI API
-    const response = await axios.post(apiUrl, {
-      model: modelName,
+    const response = await axios.post(aiConfig.apiUrl, {
+      model: aiConfig.modelName,
       messages: [
         {
           role: 'system',
-          content: '你是一个专业的日记撰写助手，擅长将零散的记录整理成有条理、有情感的日记。'
+          content: '你是一个专业的摘要撰写助手，擅长将零散的记录整理成有条理的摘要。'
         },
         {
           role: 'user',
@@ -151,8 +174,8 @@ ${recordContents}
     }, {
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'x-volcengine-ep-id': epId
+        'Authorization': `Bearer ${aiConfig.apiKey}`,
+        'x-volcengine-ep-id': aiConfig.epId
       },
       timeout: 60000
     });
@@ -175,9 +198,9 @@ exports.config = {
 
 exports.main = async (event, context) => {
   try {
-    const { date, startTimestamp, endTimestamp, useAI } = event;
+    const { date, startTimestamp, endTimestamp, useAI, openid: targetOpenid, saveToDiaries } = event || {};
     const wxContext = cloud.getWXContext();
-    const openid = wxContext.OPENID;
+    const openid = normalizeText(targetOpenid) || wxContext.OPENID;
 
     let records;
     if (startTimestamp && endTimestamp) {
@@ -213,7 +236,11 @@ exports.main = async (event, context) => {
     }
 
     // 支持在前端超时时降级到本地总结
-    const shouldUseAI = useAI !== false;
+    const shouldUseAI = useAI !== false
+      && !!aiConfig.apiKey
+      && !!aiConfig.apiUrl
+      && !!aiConfig.epId
+      && !!aiConfig.modelName;
     let summaryContent = '';
     let summaryItems = [];
     if (shouldUseAI) {
@@ -226,16 +253,19 @@ exports.main = async (event, context) => {
     const summaryText = toSummaryText(summaryItems, summaryContent);
 
     // 保存总结到数据库
-    await db.collection('diaries').add({
-      data: {
-        type: 'daily',
-        date: date,
-        content: summaryText,
-        summaryItems: summaryItems,
-        userOpenid: openid,
-        createTime: new Date().toLocaleString()
-      }
-    });
+    const shouldSave = saveToDiaries !== false;
+    if (shouldSave) {
+      await db.collection('diaries').add({
+        data: {
+          type: 'daily',
+          date: date,
+          content: summaryText,
+          summaryItems: summaryItems,
+          userOpenid: openid,
+          createTime: new Date().toLocaleString()
+        }
+      });
+    }
 
     return {
       success: true,

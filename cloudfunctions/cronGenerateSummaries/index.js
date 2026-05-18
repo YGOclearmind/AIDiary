@@ -197,17 +197,44 @@ async function saveSummary({ type, date, openid, summaryText, summaryItems }) {
   });
 }
 
-async function generateOneSummary({ openid, type, date, startTimestamp, endTimestamp }) {
+async function generateOneSummary({ openid, type, date, startTimestamp, endTimestamp, startDate, endDate }) {
   const exists = await hasSummary(type, date, openid);
   if (exists) {
     return { status: 'skipped_exists' };
   }
-  const records = await listRecordsByOpenid(openid, startTimestamp, endTimestamp);
-  if (!records.length) {
-    return { status: 'skipped_empty' };
+  const fnName = type === 'weekly' ? 'generateWeekly' : 'generateDiary';
+  const payload = type === 'weekly'
+    ? {
+      openid,
+      startTimestamp,
+      endTimestamp,
+      startDate,
+      endDate,
+      saveToDiaries: false
+    }
+    : {
+      openid,
+      date,
+      startTimestamp,
+      endTimestamp,
+      useAI: true,
+      saveToDiaries: false
+    };
+  const callRes = await cloud.callFunction({
+    name: fnName,
+    data: payload,
+    timeout: 60000
+  });
+  const result = callRes && callRes.result ? callRes.result : {};
+  if (!result.success) {
+    const message = normalizeText(result.message);
+    if (message.includes('无记录')) {
+      return { status: 'skipped_empty' };
+    }
+    throw new Error(message || '生成摘要失败');
   }
-  const summaryItems = toSummaryItems(records);
-  const summaryText = toSummaryText(summaryItems);
+  const summaryText = normalizeText(result.summaryText || result.weekly || result.diary || result.yearly || result.content);
+  const summaryItems = Array.isArray(result.summaryItems) ? result.summaryItems : [];
   if (!summaryText) {
     return { status: 'skipped_empty' };
   }
@@ -218,7 +245,7 @@ async function generateOneSummary({ openid, type, date, startTimestamp, endTimes
     summaryText,
     summaryItems
   });
-  return { status: 'created' };
+  return { status: 'created', aiUsed: !!result.aiUsed };
 }
 
 exports.config = {
@@ -239,6 +266,8 @@ exports.main = async (event) => {
   const weeklyDate = shouldRunWeekly
     ? `${formatCstDateFromMs(lastWeek.start.getTime())} 至 ${formatCstDateFromMs(lastWeek.end.getTime())}`
     : '';
+  const weeklyStartDate = shouldRunWeekly ? formatCstDateFromMs(lastWeek.start.getTime()) : '';
+  const weeklyEndDate = shouldRunWeekly ? formatCstDateFromMs(lastWeek.end.getTime()) : '';
 
   const stats = {
     activeUsers: openids.length,
@@ -288,7 +317,9 @@ exports.main = async (event) => {
         type: 'weekly',
         date: weeklyDate,
         startTimestamp: lastWeek.start.getTime(),
-        endTimestamp: lastWeek.end.getTime()
+        endTimestamp: lastWeek.end.getTime(),
+        startDate: weeklyStartDate,
+        endDate: weeklyEndDate
       });
     }));
     for (const result of weeklyResults) {
