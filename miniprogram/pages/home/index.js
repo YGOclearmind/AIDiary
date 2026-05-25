@@ -12,7 +12,8 @@ const CATEGORY_RULES = [
   { name: '休闲娱乐', keywords: ['游戏', '打游戏', '开黑', '刷视频', '短视频', '抖音', 'B站', 'b站', '微博', '逛街', '旅游', '出游', '放松', '娱乐'] }
 ];
 
-function inferCategory(text) {
+// 本地关键词匹配，作为云函数调用失败时的兜底
+function inferCategoryLocal(text) {
   const source = String(text || '').toLowerCase();
   if (!source) return '其他';
   for (const rule of CATEGORY_RULES) {
@@ -305,7 +306,10 @@ Page({
     );
     const timestamp = recordDate.getTime();
     const createTime = `${recordDate.getFullYear()}-${pad2(recordDate.getMonth() + 1)}-${pad2(recordDate.getDate())} ${formatTime(recordDate)}`;
-    const category = inferCategory(extra.transcript || content);
+    const text = extra.transcript || content;
+
+    // 先用本地规则快速分类，再异步调用AI修正
+    const localCategory = inferCategoryLocal(text);
 
     db.collection('records').add({
       data: {
@@ -315,16 +319,37 @@ Page({
         date: formatRecordDate(recordDate),
         year: recordDate.getFullYear(),
         monthDay: `${recordDate.getMonth() + 1}/${recordDate.getDate()}`,
-        category: category,
+        category: localCategory,
         recordType: extra.recordType || 'text',
         audioFileID: extra.audioFileID || '',
         audioDuration: extra.audioDuration || 0,
         transcript: extra.transcript || ''
       },
-      success: () => {
+      success: (res) => {
         wx.showToast({ title: '保存成功', icon: 'success' });
         const date = this.parseDate(this.data.selectedDate);
         this.getRecordsByDate(date);
+
+        // 异步调用AI修正分类
+        const recordId = res._id;
+        wx.cloud.callFunction({
+          name: 'inferCategory',
+          data: { text },
+          success: (aiRes) => {
+            const aiCategory = aiRes.result && aiRes.result.category;
+            if (aiCategory && aiCategory !== localCategory) {
+              db.collection('records').doc(recordId).update({
+                data: { category: aiCategory },
+                success: () => {
+                  // AI分类修正成功后，刷新页面显示
+                  const date = this.parseDate(this.data.selectedDate);
+                  this.getRecordsByDate(date);
+                }
+              });
+            }
+          },
+          fail: () => {}
+        });
       },
       fail: () => {
         wx.showToast({ title: '保存失败', icon: 'none' });
