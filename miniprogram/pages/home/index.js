@@ -81,14 +81,13 @@ function generateCalendarDays(year, month, recordDays, selectedDate) {
       dateStr
     });
   }
-  const remaining = 7 - (days.length % 7);
-  if (remaining < 7) {
+  // 始终补齐到6行（42天），避免切换月份时日历高度跳动
+  while (days.length < 42) {
     const nm = month === 11 ? 0 : month + 1;
     const ny = month === 11 ? year + 1 : year;
-    for (let i = 1; i <= remaining; i++) {
-      const dateStr = `${ny}-${pad2(nm + 1)}-${pad2(i)}`;
-      days.push({ day: i, isCurrentMonth: false, isToday: false, hasRecord: recordDays.has(dateStr), isSelected: dateStr === selectedDate, dateStr });
-    }
+    const nextDay = days.length - prevMonthLastDay - daysInMonth + 1;
+    const dateStr = `${ny}-${pad2(nm + 1)}-${pad2(nextDay)}`;
+    days.push({ day: nextDay, isCurrentMonth: false, isToday: false, hasRecord: recordDays.has(dateStr), isSelected: dateStr === selectedDate, dateStr });
   }
 
   const weeks = [];
