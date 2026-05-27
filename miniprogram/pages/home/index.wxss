@@ -308,6 +308,21 @@
   color: var(--warm-text);
 }
 
+.cal-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-left: 40rpx;
+}
+
+.cal-today-btn {
+  font-size: 22rpx;
+  color: var(--warm-accent);
+  padding: 6rpx 16rpx;
+  background: rgba(232, 160, 64, 0.1);
+  border-radius: 16rpx;
+}
+
 .cal-weekdays {
   display: flex;
   justify-content: space-around;
@@ -365,6 +380,10 @@
 .cal-day-selected .cal-day-text {
   color: var(--warm-accent-dark);
   font-weight: 700;
+}
+
+.cal-day-future .cal-day-text {
+  color: #D8D0C8;
 }
 
 .cal-day-has .cal-day-dot {

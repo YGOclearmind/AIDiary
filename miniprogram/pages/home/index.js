@@ -68,7 +68,7 @@ function generateCalendarDays(year, month, recordDays, selectedDate) {
     const py = month === 0 ? year - 1 : year;
     const d = prevMonthLastDay - i;
     const dateStr = `${py}-${pad2(pm + 1)}-${pad2(d)}`;
-    days.push({ day: d, isCurrentMonth: false, isToday: false, hasRecord: recordDays.has(dateStr), isSelected: dateStr === selectedDate, dateStr });
+    days.push({ day: d, isCurrentMonth: false, isToday: false, hasRecord: recordDays.has(dateStr), isSelected: dateStr === selectedDate, dateStr, isFuture: false });
   }
   for (let d = 1; d <= daysInMonth; d++) {
     const dateStr = `${year}-${pad2(month + 1)}-${pad2(d)}`;
@@ -78,16 +78,18 @@ function generateCalendarDays(year, month, recordDays, selectedDate) {
       isToday: dateStr === todayStr,
       hasRecord: recordDays.has(dateStr),
       isSelected: dateStr === selectedDate,
-      dateStr
+      dateStr,
+      isFuture: dateStr > todayStr
     });
   }
   // 始终补齐到6行（42天），避免切换月份时日历高度跳动
+  const nm = month === 11 ? 0 : month + 1;
+  const ny = month === 11 ? year + 1 : year;
+  let nextDay = 1;
   while (days.length < 42) {
-    const nm = month === 11 ? 0 : month + 1;
-    const ny = month === 11 ? year + 1 : year;
-    const nextDay = days.length - prevMonthLastDay - daysInMonth + 1;
     const dateStr = `${ny}-${pad2(nm + 1)}-${pad2(nextDay)}`;
-    days.push({ day: nextDay, isCurrentMonth: false, isToday: false, hasRecord: recordDays.has(dateStr), isSelected: dateStr === selectedDate, dateStr });
+    days.push({ day: nextDay, isCurrentMonth: false, isToday: false, hasRecord: recordDays.has(dateStr), isSelected: dateStr === selectedDate, dateStr, isFuture: true });
+    nextDay++;
   }
 
   const weeks = [];
@@ -228,6 +230,25 @@ Page({
     this.loadCalRecords();
   },
 
+  goToToday() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const dateStr = toDateString(today);
+    
+    this.setData({
+      calMonth: month,
+      calYear: year,
+      selectedDate: dateStr,
+      dateBtnLabel: '今天',
+      greetingText: getGreetingText(),
+      dateTitle: getDateTitle(today),
+      showCalendar: false
+    });
+    this.loadCalRecords();
+    this.getRecordsByDate(today);
+  },
+
   calNextMonth() {
     let year = this.data.calYear;
     let month = this.data.calMonth + 1;
@@ -238,11 +259,14 @@ Page({
 
   onCalDayTap(e) {
     const dateStr = e.currentTarget.dataset.date;
-    const isCurrentMonth = e.currentTarget.dataset.current;
-    if (!isCurrentMonth) return;
+    const todayStr = this.data.todayStr;
+
+    if (dateStr > todayStr) {
+      wx.showToast({ title: '暂不能选择未来日期', icon: 'none', duration: 2000 });
+      return;
+    }
 
     const date = this.parseDate(dateStr);
-    const todayStr = this.data.todayStr;
     const isToday = dateStr === todayStr;
 
     let label;

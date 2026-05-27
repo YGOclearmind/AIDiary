@@ -75,7 +75,10 @@
     <view class="cal-popup" catchtap="preventTap">
       <view class="cal-header">
         <text class="cal-arrow" bindtap="calPrevMonth">‹</text>
-        <text class="cal-title">{{calTitle}}</text>
+        <view class="cal-title-wrap">
+          <text class="cal-title">{{calTitle}}</text>
+          <text class="cal-today-btn" bindtap="goToToday">返回今日</text>
+        </view>
         <text class="cal-arrow" bindtap="calNextMonth">›</text>
       </view>
       <view class="cal-weekdays">
@@ -84,13 +87,14 @@
       <view class="cal-weeks">
         <view class="cal-week" wx:for="{{calDays}}" wx:key="weekIndex">
           <view 
-            class="cal-day {{item2.isCurrentMonth ? '' : 'cal-day-other'}} {{item2.isToday ? 'cal-day-today' : ''}} {{item2.isSelected ? 'cal-day-selected' : ''}} {{item2.hasRecord ? 'cal-day-has' : ''}}" 
+            class="cal-day {{item2.isCurrentMonth ? '' : 'cal-day-other'}} {{item2.isToday ? 'cal-day-today' : ''}} {{item2.isSelected ? 'cal-day-selected' : ''}} {{item2.hasRecord ? 'cal-day-has' : ''}} {{item2.isFuture ? 'cal-day-future' : ''}}" 
             wx:for="{{item.days}}" 
             wx:for-item="item2" 
             wx:key="day"
             bindtap="onCalDayTap"
             data-date="{{item2.dateStr}}"
             data-current="{{item2.isCurrentMonth}}"
+            data-future="{{item2.isFuture}}"
           >
             <text class="cal-day-text">{{item2.day || ''}}</text>
             <view wx:if="{{item2.hasRecord}}" class="cal-day-dot"></view>
