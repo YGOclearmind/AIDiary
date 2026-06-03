@@ -106,7 +106,7 @@ Page({
     selectedDate: '',
     todayStr: '',
     dateBtnLabel: '今天',
-    aiSummaryText: '今天你的心情整体偏向平静与满足 🌿 上午完成了两项工作任务，午后享受了一段放松的阅读时光。记得给自己一点赞赏，每一天的努力都值得被看见 ✨',
+    aiSummaryText: '每一天都值得记录，写下今天的故事吧 ✨',
     todayRecords: [],
     inputValue: '',
     showCalendar: false,
@@ -129,6 +129,7 @@ Page({
       calMonth: now.getMonth()
     });
     this.getRecordsByDate(now);
+    this.loadMemoryInspiration();
   },
 
   onShow() {
@@ -172,6 +173,20 @@ Page({
           this.setData({ todayRecords: [] });
         }
       });
+  },
+
+  loadMemoryInspiration() {
+    wx.cloud.callFunction({
+      name: 'generateMemoryInspiration',
+      data: {},
+      success: res => {
+        const result = res.result || {};
+        if (result.success && result.text) {
+          this.setData({ aiSummaryText: result.text });
+        }
+      },
+      fail: () => {}
+    });
   },
 
   openCalendar() {
