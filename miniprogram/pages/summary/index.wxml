@@ -1,9 +1,18 @@
 <view class="page">
   <scroll-view class="scroll-area" scroll-y enhanced show-scrollbar="false" scroll-x="false" enable-flex>
     <view class="header">
-      <text class="header-title">洞察</text>
-      <view class="share-btn">
-        <text class="share-icon">↗</text>
+      <view class="header-left">
+        <text class="header-title">洞察</text>
+      </view>
+      <view class="header-avatar">
+        <button wx:if="{{chooseAvatarSupported}}" class="avatar-btn avatar-button-reset" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+          <image wx:if="{{hasAvatarImage}}" class="avatar-img" src="{{avatarDisplayUrl}}" mode="aspectFill" />
+          <text wx:else class="avatar-text">S</text>
+        </button>
+        <view wx:else class="avatar-btn">
+          <image wx:if="{{hasAvatarImage}}" class="avatar-img" src="{{avatarDisplayUrl}}" mode="aspectFill" />
+          <text wx:else class="avatar-text">S</text>
+        </view>
       </view>
     </view>
 

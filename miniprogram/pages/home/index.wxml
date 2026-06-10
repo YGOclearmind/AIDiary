@@ -5,8 +5,9 @@
         <text class="greeting">{{greetingText}}</text>
         <text class="date-title">{{dateTitle}}</text>
       </view>
-      <view class="avatar">
-        <text class="avatar-text">S</text>
+      <view class="avatar" bindtap="onAvatarTap">
+        <image wx:if="{{hasAvatarImage}}" class="avatar-img" src="{{avatarDisplayUrl}}" mode="aspectFill" binderror="onAvatarImgError" />
+        <text wx:else class="avatar-text">S</text>
       </view>
     </view>
 
@@ -100,6 +101,21 @@
             <view wx:if="{{item2.hasRecord}}" class="cal-day-dot"></view>
           </view>
         </view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{showAvatarAuth}}" class="auth-mask">
+    <view class="auth-card">
+      <text class="auth-title">授权获取头像</text>
+      <text class="auth-desc">用于在右上角展示你的微信头像</text>
+      <view class="auth-actions">
+        <button class="auth-btn auth-btn-primary auth-button-reset" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+          <text class="auth-btn-text auth-btn-text-primary">立即授权</text>
+        </button>
+        <button class="auth-btn auth-btn-ghost auth-button-reset" bindtap="closeAvatarAuth">
+          <text class="auth-btn-text">稍后再说</text>
+        </button>
       </view>
     </view>
   </view>

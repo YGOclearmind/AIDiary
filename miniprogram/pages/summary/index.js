@@ -4,6 +4,16 @@ function normalizeText(text) {
   return String(text || '').trim();
 }
 
+function normalizeAvatarUrl(raw) {
+  const source = String(raw || '').trim();
+  if (!source) return '';
+  const httpIndex = source.indexOf('http');
+  if (httpIndex < 0) return '';
+  const sliced = source.slice(httpIndex);
+  const match = sliced.match(/^https?:\/\/[A-Za-z0-9\-._~:/?#[\]@!$&()*+,;=%]+/);
+  return match ? match[0] : '';
+}
+
 function formatSummaryDate(date) {
   return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
 }
@@ -123,18 +133,62 @@ Page({
     cardTranslateX: 0,
     cardOpacity: 1,
     cardAnimating: false,
-    showSwipeHint: true
+    showSwipeHint: true,
+    avatarDisplayUrl: '',
+    hasAvatarImage: false,
+    chooseAvatarSupported: false
   },
 
   onLoad() {
+    this.setData({
+      chooseAvatarSupported: !!(wx.canIUse && wx.canIUse('button.open-type.chooseAvatar'))
+    });
+    this.loadAvatar();
     this.updatePeriodInfo();
     this._swipeHintTimer = setTimeout(() => {
       this.setData({ showSwipeHint: false });
     }, 4000);
   },
 
+  onShow() {
+    this.loadAvatar();
+  },
+
   onUnload() {
     if (this._swipeHintTimer) clearTimeout(this._swipeHintTimer);
+  },
+
+  loadAvatar() {
+    try {
+      const avatarSource = String(wx.getStorageSync('avatarSource') || '').trim();
+      const avatarLocalPath = String(wx.getStorageSync('avatarLocalPath') || '').trim();
+      const avatarRemoteUrl = normalizeAvatarUrl(wx.getStorageSync('userAvatarUrl') || '');
+      const avatarDisplayUrl = avatarSource === 'chooseAvatar'
+        ? avatarLocalPath
+        : avatarRemoteUrl;
+      this.setData({
+        avatarDisplayUrl,
+        hasAvatarImage: !!avatarDisplayUrl
+      });
+    } catch (err) {
+      console.error('[summary] loadAvatar failed', err);
+    }
+  },
+
+  onChooseAvatar(e) {
+    const avatarUrl = String((e && e.detail && e.detail.avatarUrl) || '').trim();
+    console.error('[summary] chooseAvatar result', avatarUrl);
+    if (!avatarUrl) {
+      wx.showToast({ title: '未获取到头像', icon: 'none' });
+      return;
+    }
+    try { wx.setStorageSync('avatarLocalPath', avatarUrl); } catch (err) {}
+    try { wx.setStorageSync('avatarSource', 'chooseAvatar'); } catch (err) {}
+    try { wx.setStorageSync('avatarAuthDone', true); } catch (err) {}
+    this.setData({
+      avatarDisplayUrl: avatarUrl,
+      hasAvatarImage: true
+    });
   },
 
   getRange() {
