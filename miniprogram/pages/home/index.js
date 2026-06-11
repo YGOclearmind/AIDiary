@@ -109,6 +109,13 @@ Page({
     aiSummaryText: '每一天都值得记录，写下今天的故事吧 ✨',
     todayRecords: [],
     inputValue: '',
+    userAvatarUrl: '',
+    avatarLocalPath: '',
+    avatarDisplayUrl: '',
+    avatarSource: '',
+    hasAvatarImage: false,
+    avatarAuthDone: false,
+    showAvatarAuth: false,
     showCalendar: false,
     calWeekDays: ['日', '一', '二', '三', '四', '五', '六'],
     calTitle: '',
@@ -117,7 +124,26 @@ Page({
     calMonth: 0
   },
 
+  normalizeAvatarUrl(raw) {
+    const source = String(raw || '').trim();
+    if (!source) return '';
+    const httpIndex = source.indexOf('http');
+    if (httpIndex < 0) return '';
+    const sliced = source.slice(httpIndex);
+    const match = sliced.match(/^https?:\/\/[A-Za-z0-9\-._~:/?#[\]@!$&()*+,;=%]+/);
+    return match ? match[0] : '';
+  },
+
+  isValidAvatarUrl(url) {
+    return /^https?:\/\//.test(String(url || ''));
+  },
+
   onLoad() {
+    this._profileRequesting = false;
+    this._profileLastTs = 0;
+    this._authToastShown = false;
+    this.loadUserAvatar();
+    this.ensureAvatarAuthPrompt();
     const now = new Date();
     const todayStr = toDateString(now);
     this.setData({
@@ -133,6 +159,8 @@ Page({
   },
 
   onShow() {
+    this.loadUserAvatar();
+    this.ensureAvatarAuthPrompt();
     const now = new Date();
     const todayStr = toDateString(now);
     const isToday = this.data.selectedDate === todayStr;
@@ -147,6 +175,197 @@ Page({
   parseDate(dateStr) {
     const parts = dateStr.split('-');
     return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  },
+
+  loadUserAvatar() {
+    try {
+      const raw = wx.getStorageSync('userAvatarUrl') || '';
+      const localRaw = wx.getStorageSync('avatarLocalPath') || '';
+      const avatarSource = String(wx.getStorageSync('avatarSource') || '').trim();
+      const userAvatarUrl = this.normalizeAvatarUrl(raw);
+      const avatarLocalPath = String(localRaw || '').trim();
+      if (raw && raw !== userAvatarUrl) {
+        try { wx.setStorageSync('userAvatarUrl', userAvatarUrl); } catch (e) {}
+      }
+      const avatarDisplayUrl = avatarSource === 'chooseAvatar' ? avatarLocalPath : '';
+      const hasAvatarImage = !!avatarDisplayUrl;
+      if (
+        userAvatarUrl !== this.data.userAvatarUrl ||
+        avatarLocalPath !== this.data.avatarLocalPath ||
+        avatarDisplayUrl !== this.data.avatarDisplayUrl ||
+        avatarSource !== this.data.avatarSource ||
+        hasAvatarImage !== this.data.hasAvatarImage
+      ) {
+        this.setData({ userAvatarUrl, avatarLocalPath, avatarDisplayUrl, avatarSource, hasAvatarImage });
+      }
+    } catch (e) {
+      console.error('[home] loadUserAvatar failed', e);
+    }
+  },
+
+  ensureAvatarAuthPrompt() {
+    const normalized = this.normalizeAvatarUrl(this.data.userAvatarUrl);
+    let authDone = false;
+    try { authDone = !!wx.getStorageSync('avatarAuthDone'); } catch (e) {}
+    const avatarSource = String(wx.getStorageSync('avatarSource') || '').trim();
+    const chooseAvatarSupported = !!(wx.canIUse && wx.canIUse('button.open-type.chooseAvatar'));
+    const urlValid = this.isValidAvatarUrl(normalized);
+    const avatarLocalPath = String(wx.getStorageSync('avatarLocalPath') || '').trim();
+    const hasChosenAvatar = authDone && avatarSource === 'chooseAvatar' && !!avatarLocalPath;
+    const hasAvatar = chooseAvatarSupported ? hasChosenAvatar : (urlValid && authDone);
+    const nextAvatarUrl = hasAvatar && !chooseAvatarSupported ? normalized : '';
+    const nextLocalPath = hasAvatar && chooseAvatarSupported ? avatarLocalPath : '';
+    const avatarDisplayUrl = chooseAvatarSupported ? nextLocalPath : nextAvatarUrl;
+    this.setData({
+      showAvatarAuth: !hasAvatar,
+      avatarAuthDone: authDone,
+      userAvatarUrl: nextAvatarUrl,
+      avatarLocalPath: nextLocalPath,
+      avatarDisplayUrl,
+      avatarSource,
+      hasAvatarImage: !!avatarDisplayUrl
+    }, () => {
+      console.error('[home] ensureAvatarAuthPrompt', {
+        hasAvatar,
+        authDone,
+        avatarSource,
+        chooseAvatarSupported,
+        normalized,
+        urlValid,
+        avatarLocalPath: this.data.avatarLocalPath,
+        avatarDisplayUrl: this.data.avatarDisplayUrl,
+        rawAvatarInData: this.data.userAvatarUrl,
+        showAvatarAuth: this.data.showAvatarAuth
+      });
+    });
+    if (!chooseAvatarSupported && hasAvatar && !avatarLocalPath) {
+      console.error('[home] avatar local cache missing, retry download');
+      this.cacheAvatarToLocal(nextAvatarUrl);
+    }
+    if (!hasAvatar && !this._authToastShown) {
+      this._authToastShown = true;
+      wx.showToast({ title: '未获取到头像，需授权', icon: 'none', duration: 2500 });
+    }
+  },
+
+  closeAvatarAuth() {
+    console.error('[home] closeAvatarAuth');
+    this.setData({ showAvatarAuth: false });
+  },
+
+  onAvatarImgError(e) {
+    console.error('[home] avatar image error', e);
+    try { wx.removeStorageSync('userAvatarUrl'); } catch (err) {}
+    try { wx.removeStorageSync('avatarLocalPath'); } catch (err) {}
+    try { wx.removeStorageSync('avatarSource'); } catch (err) {}
+    this.setData({ userAvatarUrl: '', avatarLocalPath: '', avatarDisplayUrl: '', avatarSource: '', hasAvatarImage: false, showAvatarAuth: true });
+  },
+
+  onChooseAvatar(e) {
+    const avatarUrl = String((e && e.detail && e.detail.avatarUrl) || '').trim();
+    console.error('[home] chooseAvatar result', avatarUrl);
+    if (!avatarUrl) {
+      wx.showToast({ title: '未获取到头像', icon: 'none' });
+      return;
+    }
+    try { wx.setStorageSync('avatarLocalPath', avatarUrl); } catch (err) {}
+    try { wx.setStorageSync('avatarAuthDone', true); } catch (err) {}
+    try { wx.setStorageSync('avatarSource', 'chooseAvatar'); } catch (err) {}
+    this.setData({
+      userAvatarUrl: '',
+      avatarLocalPath: avatarUrl,
+      avatarDisplayUrl: avatarUrl,
+      avatarSource: 'chooseAvatar',
+      hasAvatarImage: true,
+      showAvatarAuth: false,
+      avatarAuthDone: true
+    });
+  },
+
+  cacheAvatarToLocal(remoteUrl) {
+    if (!this.isValidAvatarUrl(remoteUrl)) {
+      console.error('[home] skip avatar download, invalid url', remoteUrl);
+      return;
+    }
+    wx.downloadFile({
+      url: remoteUrl,
+      success: (downloadRes) => {
+        console.error('[home] avatar download result', downloadRes);
+        if (downloadRes.statusCode === 200 && downloadRes.tempFilePath) {
+          try { wx.setStorageSync('avatarLocalPath', downloadRes.tempFilePath); } catch (e) {}
+          try { wx.setStorageSync('avatarSource', 'download'); } catch (e) {}
+          this.setData({
+            avatarLocalPath: downloadRes.tempFilePath,
+            avatarDisplayUrl: '',
+            avatarSource: 'download',
+            hasAvatarImage: false
+          });
+        }
+      },
+      fail: (err) => {
+        console.error('[home] avatar download fail', err);
+      }
+    });
+  },
+
+  onAvatarTap() {
+    if (wx.canIUse && wx.canIUse('button.open-type.chooseAvatar')) {
+      this.setData({ showAvatarAuth: true });
+      return;
+    }
+    const normalized = this.normalizeAvatarUrl(this.data.userAvatarUrl);
+    if (this.isValidAvatarUrl(normalized)) return;
+    if (normalized) {
+      try { wx.removeStorageSync('userAvatarUrl'); } catch (e) {}
+      try { wx.removeStorageSync('avatarLocalPath'); } catch (e) {}
+      try { wx.removeStorageSync('avatarSource'); } catch (e) {}
+      this.setData({ userAvatarUrl: '', avatarLocalPath: '', avatarDisplayUrl: '', avatarSource: '', hasAvatarImage: false });
+    }
+    if (!wx.getUserProfile) {
+      wx.showToast({ title: '当前微信版本不支持', icon: 'none' });
+      return;
+    }
+    const nowTs = Date.now();
+    if (this._profileRequesting) return;
+    if (this._profileLastTs && nowTs - this._profileLastTs < 10000) {
+      wx.showToast({ title: '操作太频繁，请稍后再试', icon: 'none' });
+      return;
+    }
+    this._profileRequesting = true;
+    this._profileLastTs = nowTs;
+    console.error('[home] wx.getUserProfile start');
+    wx.getUserProfile({
+      desc: '用于在首页显示你的微信头像',
+      success: (res) => {
+        const userInfo = (res && res.userInfo) || {};
+        const userAvatarUrl = this.normalizeAvatarUrl(userInfo.avatarUrl || '');
+        console.error('[home] avatar url from getUserProfile', userAvatarUrl);
+        if (!userAvatarUrl) return;
+        try { wx.setStorageSync('userAvatarUrl', userAvatarUrl); } catch (e) {}
+        try { wx.setStorageSync('avatarAuthDone', true); } catch (e) {}
+        try { wx.setStorageSync('avatarSource', 'profile'); } catch (e) {}
+        this.setData({
+          userAvatarUrl,
+          avatarLocalPath: '',
+          avatarDisplayUrl: userAvatarUrl,
+          avatarSource: 'profile',
+          hasAvatarImage: true,
+          showAvatarAuth: false,
+          avatarAuthDone: true
+        });
+        this.cacheAvatarToLocal(userAvatarUrl);
+        this._profileRequesting = false;
+      },
+      fail: (err) => {
+        console.error('[home] wx.getUserProfile fail', err);
+        this._profileRequesting = false;
+        const msg = (err && err.errMsg) || '';
+        if (msg.includes('too frequently')) {
+          wx.showToast({ title: '获取头像过于频繁，请稍后再试', icon: 'none' });
+          return;
+        }
+      }
+    });
   },
 
   getRecordsByDate(date) {

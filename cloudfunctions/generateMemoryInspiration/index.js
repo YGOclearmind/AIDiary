@@ -7,6 +7,10 @@ cloud.init({
 
 const db = cloud.database();
 const _ = db.command;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const CST_OFFSET_MS = 8 * 60 * 60 * 1000;
+const AI_TIMEOUT_MS = 8000;
+const TODAY_FACT_TIMEOUT_MS = 4000;
 
 function getEnvText(name) {
   return String((process.env && process.env[name]) || '').trim();
@@ -66,22 +70,67 @@ function getMonthDay(date) {
   return `${padNumber(date.getMonth() + 1)}-${padNumber(date.getDate())}`;
 }
 
+function getCstCalendarDate(nowMs = Date.now()) {
+  const cst = new Date(Number(nowMs) + CST_OFFSET_MS);
+  return new Date(Date.UTC(cst.getUTCFullYear(), cst.getUTCMonth(), cst.getUTCDate()));
+}
+
+function shiftUtcCalendarDate(date, { months = 0, years = 0 } = {}) {
+  const next = new Date(date.getTime());
+  if (years) next.setUTCFullYear(next.getUTCFullYear() + years);
+  if (months) next.setUTCMonth(next.getUTCMonth() + months);
+  return next;
+}
+
+function formatUtcDashDate(date) {
+  return `${date.getUTCFullYear()}-${padNumber(date.getUTCMonth() + 1)}-${padNumber(date.getUTCDate())}`;
+}
+
+function formatUtcSlashDate(date) {
+  return `${date.getUTCFullYear()}/${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
+}
+
+function getUtcMonthDay(date) {
+  return `${padNumber(date.getUTCMonth() + 1)}-${padNumber(date.getUTCDate())}`;
+}
+
+function withTimeout(promise, timeoutMs, fallbackValue) {
+  return Promise.race([
+    promise,
+    new Promise(resolve => setTimeout(() => resolve(fallbackValue), timeoutMs))
+  ]);
+}
+
 function getRecordText(record) {
   if (!record) return '';
   if (record.recordType === 'audio') return normalizeText(record.transcript || record.content);
   return normalizeText(record.content);
 }
 
-async function getRecordsByDate(openid, dateStr) {
-  const parts = dateStr.split('-');
-  const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-  const start = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
-  const end = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+async function getRecordsByDate(openid, dateObj) {
+  const slashDate = formatUtcSlashDate(dateObj);
+  const direct = await db.collection('records')
+    .where({
+      _openid: openid,
+      date: slashDate
+    })
+    .orderBy('timestamp', 'desc')
+    .limit(50)
+    .get();
+  if (Array.isArray(direct.data) && direct.data.length) {
+    return direct.data;
+  }
 
+  const startUtcMs = Date.UTC(
+    dateObj.getUTCFullYear(),
+    dateObj.getUTCMonth(),
+    dateObj.getUTCDate(),
+    0, 0, 0, 0
+  ) - CST_OFFSET_MS;
   const res = await db.collection('records')
     .where({
       _openid: openid,
-      timestamp: _.gte(start.getTime()).and(_.lte(end.getTime()))
+      timestamp: _.gte(startUtcMs).and(_.lte(startUtcMs + DAY_MS - 1))
     })
     .orderBy('timestamp', 'desc')
     .limit(50)
@@ -91,6 +140,9 @@ async function getRecordsByDate(openid, dateStr) {
 }
 
 async function generateMemoryWithAI(lastMonthRecords, lastYearRecords, lastMonthDate, lastYearDate) {
+  if (!aiConfig.apiKey || !aiConfig.apiUrl || !aiConfig.epId || !aiConfig.modelName) {
+    return '';
+  }
   const parts = [];
 
   if (lastMonthRecords.length > 0) {
@@ -164,7 +216,7 @@ ${parts.join('\n\n')}
         'Authorization': `Bearer ${aiConfig.apiKey}`,
         'x-volcengine-ep-id': aiConfig.epId
       },
-      timeout: 30000
+      timeout: AI_TIMEOUT_MS
     });
 
     return normalizeText(response.data.choices[0].message.content);
@@ -206,7 +258,7 @@ async function fetchTodayFacts(monthDay) {
   try {
     const response = await axios.get(todayApiConfig.url, {
       params: { id: todayApiConfig.id, key: todayApiConfig.key },
-      timeout: 10000
+      timeout: TODAY_FACT_TIMEOUT_MS
     });
     const body = response.data || {};
     if (body.code !== 200) return [];
@@ -254,23 +306,23 @@ exports.main = async (event) => {
   try {
     const wxContext = cloud.getWXContext();
     const openid = wxContext.OPENID;
-    const now = new Date();
-    const todayStr = toDateString(now);
+    const cstToday = getCstCalendarDate();
+    const todayStr = formatUtcDashDate(cstToday);
 
     console.log('开始生成回忆灵感, openid:', openid, 'todayStr:', todayStr);
     console.log('AI配置检查:', { hasApiKey: !!aiConfig.apiKey, hasApiUrl: !!aiConfig.apiUrl, hasEpId: !!aiConfig.epId, hasModel: !!aiConfig.modelName });
     console.log('历史API配置检查:', { hasId: !!todayApiConfig.id, hasKey: !!todayApiConfig.key });
 
-    const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
-    const lastYearDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
-    const lastMonthStr = toDateString(lastMonthDate);
-    const lastYearStr = toDateString(lastYearDate);
+    const lastMonthDate = shiftUtcCalendarDate(cstToday, { months: -1 });
+    const lastYearDate = shiftUtcCalendarDate(cstToday, { years: -1 });
+    const lastMonthStr = formatUtcDashDate(lastMonthDate);
+    const lastYearStr = formatUtcDashDate(lastYearDate);
 
     console.log('查询日期:', { lastMonthStr, lastYearStr });
 
     const [lastMonthRecords, lastYearRecords] = await Promise.all([
-      getRecordsByDate(openid, lastMonthStr),
-      getRecordsByDate(openid, lastYearStr)
+      getRecordsByDate(openid, lastMonthDate),
+      getRecordsByDate(openid, lastYearDate)
     ]);
 
     console.log('查询结果:', { lastMonthCount: lastMonthRecords.length, lastYearCount: lastYearRecords.length });
@@ -279,11 +331,15 @@ exports.main = async (event) => {
 
     if (hasMemory) {
       console.log('有历史记录，调用AI生成回忆灵感');
-      const memoryText = await generateMemoryWithAI(
-        lastMonthRecords,
-        lastYearRecords,
-        lastMonthStr,
-        lastYearStr
+      const memoryText = await withTimeout(
+        generateMemoryWithAI(
+          lastMonthRecords,
+          lastYearRecords,
+          lastMonthStr,
+          lastYearStr
+        ),
+        AI_TIMEOUT_MS + 1000,
+        ''
       );
 
       console.log('AI生成结果:', memoryText ? '成功' : '失败/为空', memoryText ? memoryText.substring(0, 50) : '');
@@ -302,8 +358,8 @@ exports.main = async (event) => {
     }
 
     console.log('无历史记录或AI失败，获取历史今日事件');
-    const monthDay = getMonthDay(now);
-    const facts = await fetchTodayFacts(monthDay);
+    const monthDay = getUtcMonthDay(cstToday);
+    const facts = await withTimeout(fetchTodayFacts(monthDay), TODAY_FACT_TIMEOUT_MS + 1000, []);
 
     console.log('历史今日事件:', facts.length, '条');
 
