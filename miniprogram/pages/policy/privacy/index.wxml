@@ -1,0 +1,107 @@
+<view class="page">
+  <scroll-view class="scroll-area" scroll-y enhanced show-scrollbar="false">
+    <view class="content">
+      <view class="title-area">
+        <text class="main-title">隐私政策</text>
+        <text class="version">版本号：V1.0.0</text>
+      </view>
+
+      <view class="section">
+        <text class="section-title">一、我们收集的信息</text>
+        <view class="paragraph">
+          <text class="para-text">1. 用户基本信息：通过微信登录获取的昵称、头像等公开信息，用于用户身份识别和个性化展示。</text>
+        </view>
+        <view class="paragraph">
+          <text class="para-text">2. 日记内容：用户在本服务中记录的所有日记内容，包括文本和语音转写内容。</text>
+        </view>
+        <view class="paragraph">
+          <text class="para-text">3. 使用数据：用户使用服务的时间、频率、功能使用情况等，用于优化服务体验。</text>
+        </view>
+      </view>
+
+      <view class="section">
+        <text class="section-title">二、信息的使用</text>
+        <view class="paragraph">
+          <text class="para-text">1. 提供服务：使用用户信息提供日记记录、AI摘要、灵感推荐等核心功能。</text>
+        </view>
+        <view class="paragraph">
+          <text class="para-text">2. 服务优化：在匿名化处理后，使用用户数据优化AI模型和服务体验。</text>
+        </view>
+        <view class="paragraph">
+          <text class="para-text">3. 安全保障：用于检测和防范恶意行为，保护服务安全。</text>
+        </view>
+      </view>
+
+      <view class="section">
+        <text class="section-title">三、信息的存储</text>
+        <view class="paragraph">
+          <text class="para-text">1. 用户数据存储在微信云开发平台，采用行业标准的安全措施进行保护。</text>
+        </view>
+        <view class="paragraph">
+          <text class="para-text">2. 用户日记内容仅用户本人可见，开发者不会主动查看或泄露。</text>
+        </view>
+        <view class="paragraph">
+          <text class="para-text">3. 用户可以随时删除自己的日记内容。</text>
+        </view>
+      </view>
+
+      <view class="section">
+        <text class="section-title">四、信息的分享</text>
+        <view class="paragraph">
+          <text class="para-text">1. 我们不会向任何第三方出售、出租或分享用户的个人信息和日记内容。</text>
+        </view>
+        <view class="paragraph">
+          <text class="para-text">2. 仅在以下情况下可能披露用户信息：</text>
+          <view class="sub-list">
+            <text class="list-item">• 法律法规要求或政府部门强制要求；</text>
+            <text class="list-item">• 为保护用户或他人的合法权益；</text>
+            <text class="list-item">• 用户明确授权同意。</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="section">
+        <text class="section-title">五、信息安全</text>
+        <view class="paragraph">
+          <text class="para-text">1. 我们采用多种安全技术和措施保护用户信息安全，包括数据加密、访问控制等。</text>
+        </view>
+        <view class="paragraph">
+          <text class="para-text">2. 但互联网环境存在安全风险，我们无法保证信息的绝对安全。</text>
+        </view>
+      </view>
+
+      <view class="section">
+        <text class="section-title">六、用户权利</text>
+        <view class="paragraph">
+          <text class="para-text">1. 用户有权查看、修改、删除自己的个人信息和日记内容。</text>
+        </view>
+        <view class="paragraph">
+          <text class="para-text">2. 用户有权随时注销账号，注销后所有数据将被删除。</text>
+        </view>
+      </view>
+
+      <view class="section">
+        <text class="section-title">七、儿童隐私</text>
+        <view class="paragraph">
+          <text class="para-text">本服务不专门面向儿童，如发现未满13周岁的儿童使用本服务，我们将在监护人同意后删除相关数据。</text>
+        </view>
+      </view>
+
+      <view class="section">
+        <text class="section-title">八、政策变更</text>
+        <view class="paragraph">
+          <text class="para-text">我们可能会更新本隐私政策，变更后会在小程序内公布，用户继续使用服务即表示同意新政策。</text>
+        </view>
+      </view>
+
+      <view class="section">
+        <text class="section-title">九、联系我们</text>
+        <view class="paragraph">
+          <text class="para-text">如有任何隐私相关的疑问或投诉，请通过小程序内的反馈渠道联系我们。</text>
+        </view>
+      </view>
+
+      <view class="bottom-spacer"></view>
+    </view>
+  </scroll-view>
+</view>

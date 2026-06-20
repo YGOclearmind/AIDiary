@@ -140,6 +140,18 @@ Page({
   },
 
   onLoad() {
+    // 登录拦截
+    try {
+      const isLoggedIn = wx.getStorageSync('isLoggedIn');
+      if (!isLoggedIn) {
+        wx.redirectTo({ url: '/pages/login/index' });
+        return;
+      }
+    } catch (e) {
+      wx.redirectTo({ url: '/pages/login/index' });
+      return;
+    }
+
     this.setData({
       chooseAvatarSupported: !!(wx.canIUse && wx.canIUse('button.open-type.chooseAvatar'))
     });

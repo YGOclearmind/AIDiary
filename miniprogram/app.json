@@ -1,7 +1,10 @@
 {
   "pages": [
+    "pages/login/index",
     "pages/home/index",
-    "pages/summary/index"
+    "pages/summary/index",
+    "pages/policy/user/index",
+    "pages/policy/privacy/index"
   ],
   "window": {
     "backgroundColor": "#FFF9F2",
