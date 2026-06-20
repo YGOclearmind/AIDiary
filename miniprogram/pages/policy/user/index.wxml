@@ -1,0 +1,86 @@
+<view class="page">
+  <scroll-view class="scroll-area" scroll-y enhanced show-scrollbar="false">
+    <view class="content">
+      <view class="title-area">
+        <text class="main-title">用户协议</text>
+        <text class="version">版本号：V1.0.0</text>
+      </view>
+
+      <view class="section">
+        <text class="section-title">一、服务内容</text>
+        <view class="paragraph">
+          <text class="para-text">本协议所指的"随性日记"（以下简称"本服务"）是由开发者（以下简称"我们"）提供的一款基于微信小程序的个人日记记录应用。用户可以通过本服务记录每日心情、生活琐事，并获取AI生成的日记摘要和灵感推荐。</text>
+        </view>
+      </view>
+
+      <view class="section">
+        <text class="section-title">二、用户账号</text>
+        <view class="paragraph">
+          <text class="para-text">1. 用户通过微信账号登录本服务，登录即表示同意本协议。</text>
+        </view>
+        <view class="paragraph">
+          <text class="para-text">2. 用户应妥善保管自己的微信账号，因账号泄露或被盗用产生的损失由用户自行承担。</text>
+        </view>
+      </view>
+
+      <view class="section">
+        <text class="section-title">三、用户行为规范</text>
+        <view class="paragraph">
+          <text class="para-text">1. 用户在使用本服务时，应遵守法律法规和公序良俗，不得发布违法、违规、低俗或侵犯他人权益的内容。</text>
+        </view>
+        <view class="paragraph">
+          <text class="para-text">2. 用户不得利用本服务进行任何商业活动或违法活动。</text>
+        </view>
+        <view class="paragraph">
+          <text class="para-text">3. 用户不得恶意攻击或干扰本服务的正常运行。</text>
+        </view>
+      </view>
+
+      <view class="section">
+        <text class="section-title">四、知识产权</text>
+        <view class="paragraph">
+          <text class="para-text">1. 本服务的所有内容、代码、设计、商标等均属于开发者所有。</text>
+        </view>
+        <view class="paragraph">
+          <text class="para-text">2. 用户在本服务中生成的日记内容的知识产权归用户所有，但开发者有权在不泄露用户隐私的前提下用于服务优化和AI模型训练。</text>
+        </view>
+      </view>
+
+      <view class="section">
+        <text class="section-title">五、隐私保护</text>
+        <view class="paragraph">
+          <text class="para-text">我们重视用户隐私保护，详细内容请参见《隐私政策》。</text>
+        </view>
+      </view>
+
+      <view class="section">
+        <text class="section-title">六、免责声明</text>
+        <view class="paragraph">
+          <text class="para-text">1. 本服务提供的AI摘要和灵感推荐仅供参考，不代表开发者的观点或建议。</text>
+        </view>
+        <view class="paragraph">
+          <text class="para-text">2. 开发者不对用户因使用本服务产生的任何直接或间接损失承担责任。</text>
+        </view>
+        <view class="paragraph">
+          <text class="para-text">3. 开发者有权根据业务需要对服务进行调整或暂停，无需提前通知用户。</text>
+        </view>
+      </view>
+
+      <view class="section">
+        <text class="section-title">七、协议变更</text>
+        <view class="paragraph">
+          <text class="para-text">开发者有权根据法律法规和业务需要修改本协议，修改后的协议将在小程序内公布，用户继续使用服务即表示同意新协议。</text>
+        </view>
+      </view>
+
+      <view class="section">
+        <text class="section-title">八、联系我们</text>
+        <view class="paragraph">
+          <text class="para-text">如有任何疑问或建议，请通过小程序内的反馈渠道联系我们。</text>
+        </view>
+      </view>
+
+      <view class="bottom-spacer"></view>
+    </view>
+  </scroll-view>
+</view>

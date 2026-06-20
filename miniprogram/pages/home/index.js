@@ -139,6 +139,18 @@ Page({
   },
 
   onLoad() {
+    // 登录拦截
+    try {
+      const isLoggedIn = wx.getStorageSync('isLoggedIn');
+      if (!isLoggedIn) {
+        wx.redirectTo({ url: '/pages/login/index' });
+        return;
+      }
+    } catch (e) {
+      wx.redirectTo({ url: '/pages/login/index' });
+      return;
+    }
+
     this._profileRequesting = false;
     this._profileLastTs = 0;
     this._authToastShown = false;
