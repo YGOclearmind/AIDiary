@@ -17,26 +17,19 @@
     </view>
 
     <view class="segment-control">
-      <view 
-        class="seg-tab {{currentPeriod === 'day' ? 'seg-tab-active' : ''}}" 
-        data-period="day" 
+      <view
+        class="seg-tab {{currentPeriod === 'day' ? 'seg-tab-active' : ''}}"
+        data-period="day"
         bindtap="selectPeriod"
       >
-        <text class="seg-text">日</text>
+        <text class="seg-text">日报</text>
       </view>
-      <view 
-        class="seg-tab {{currentPeriod === 'week' ? 'seg-tab-active' : ''}}" 
-        data-period="week" 
+      <view
+        class="seg-tab {{currentPeriod === 'week' ? 'seg-tab-active' : ''}}"
+        data-period="week"
         bindtap="selectPeriod"
       >
-        <text class="seg-text">周</text>
-      </view>
-      <view 
-        class="seg-tab {{currentPeriod === 'year' ? 'seg-tab-active' : ''}}" 
-        data-period="year" 
-        bindtap="selectPeriod"
-      >
-        <text class="seg-text">年</text>
+        <text class="seg-text">周报</text>
       </view>
     </view>
 
@@ -47,7 +40,7 @@
       bindtouchmove="onTouchMove"
       bindtouchend="onTouchEnd"
     >
-      <view class="card-cover">
+      <view class="card-cover" bindtap="openCalendar">
         <text class="cover-emoji">{{coverEmoji}}</text>
         <text class="cover-period">{{periodLabel}}</text>
       </view>
@@ -90,4 +83,35 @@
 
     <view class="bottom-spacer"></view>
   </scroll-view>
+
+  <view wx:if="{{showCalendar}}" class="cal-mask" bindtap="closeCalendar">
+    <view class="cal-popup" catchtap="preventTap">
+      <view class="cal-header">
+        <text class="cal-arrow" bindtap="calPrevMonth">‹</text>
+        <view class="cal-title-wrap">
+          <text class="cal-title">{{calTitle}}</text>
+          <text class="cal-today-btn" bindtap="goToToday">返回今日</text>
+        </view>
+        <text class="cal-arrow" bindtap="calNextMonth">›</text>
+      </view>
+      <view class="cal-weekdays">
+        <text class="cal-wd" wx:for="{{calWeekDays}}" wx:key="*this">{{item}}</text>
+      </view>
+      <view class="cal-weeks">
+        <view class="cal-week" wx:for="{{calDays}}" wx:key="weekIndex">
+          <view
+            class="cal-day {{item2.isCurrentMonth ? '' : 'cal-day-other'}} {{item2.isToday ? 'cal-day-today' : ''}} {{item2.isSelected ? 'cal-day-selected' : ''}} {{item2.hasRecord ? 'cal-day-has' : ''}} {{item2.isFuture ? 'cal-day-future' : ''}}"
+            wx:for="{{item.days}}"
+            wx:for-item="item2"
+            wx:key="dateStr"
+            bindtap="onCalDayTap"
+            data-date="{{item2.dateStr}}"
+          >
+            <text class="cal-day-text">{{item2.day || ''}}</text>
+            <view wx:if="{{item2.hasRecord}}" class="cal-day-dot"></view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
 </view>

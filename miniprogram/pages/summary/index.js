@@ -14,42 +14,97 @@ function normalizeAvatarUrl(raw) {
   return match ? match[0] : '';
 }
 
+function toDateString(date) {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+function parseDateString(dateStr) {
+  const parts = String(dateStr || '').split('-');
+  return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+}
+
+function addDays(date, offset) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + offset);
+  return next;
+}
+
 function formatSummaryDate(date) {
   return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
 }
 
-function getDayRange(offset) {
-  const now = new Date();
-  now.setDate(now.getDate() + offset);
+function getDayRangeByDate(date, today) {
+  const current = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const yesterday = addDays(todayDate, -1);
+  const currentStr = toDateString(current);
+  const todayStr = toDateString(todayDate);
+  const yesterdayStr = toDateString(yesterday);
+  let label = `${current.getMonth() + 1}月${current.getDate()}日`;
+  if (currentStr === todayStr) label = '今天';
+  if (currentStr === yesterdayStr) label = '昨天';
   return {
-    start: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
-    end: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999),
-    label: offset === 0 ? '今天' : offset === -1 ? '昨天' : offset === 1 ? '明天' : `${now.getMonth() + 1}月${now.getDate()}日`
+    start: current,
+    end: new Date(current.getFullYear(), current.getMonth(), current.getDate(), 23, 59, 59, 999),
+    label
   };
 }
 
-function getWeekRange(offset) {
-  const now = new Date();
-  const day = now.getDay() || 7;
-  const thisMonday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1);
-  const monday = new Date(thisMonday);
-  monday.setDate(thisMonday.getDate() + offset * 7);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
+function getWeekRangeByDate(date) {
+  const current = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const day = current.getDay() || 7;
+  const monday = addDays(current, 1 - day);
+  const sunday = addDays(monday, 6);
   return {
     start: monday,
     end: new Date(sunday.getFullYear(), sunday.getMonth(), sunday.getDate(), 23, 59, 59, 999),
-    label: `${monday.getMonth() + 1}月${monday.getDate()}日 — ${sunday.getMonth() + 1}月${sunday.getDate()}日`
+    label: `${monday.getMonth() + 1}月${monday.getDate()}日 - ${sunday.getMonth() + 1}月${sunday.getDate()}日`
   };
 }
 
-function getYearRange(offset) {
-  const year = new Date().getFullYear() + offset;
-  return {
-    start: new Date(year, 0, 1),
-    end: new Date(year, 11, 31, 23, 59, 59, 999),
-    label: `${year}年`
-  };
+function generateCalendarDays(year, month, recordDays, selectedDate) {
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startWeekday = firstDay.getDay();
+  const daysInMonth = lastDay.getDate();
+  const today = new Date();
+  const todayStr = toDateString(today);
+
+  const days = [];
+  const prevMonthLastDay = new Date(year, month, 0).getDate();
+  for (let i = startWeekday - 1; i >= 0; i--) {
+    const pm = month === 0 ? 11 : month - 1;
+    const py = month === 0 ? year - 1 : year;
+    const d = prevMonthLastDay - i;
+    const dateStr = `${py}-${pad2(pm + 1)}-${pad2(d)}`;
+    days.push({ day: d, isCurrentMonth: false, isToday: false, hasRecord: recordDays.has(dateStr), isSelected: dateStr === selectedDate, dateStr, isFuture: false });
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${pad2(month + 1)}-${pad2(d)}`;
+    days.push({
+      day: d,
+      isCurrentMonth: true,
+      isToday: dateStr === todayStr,
+      hasRecord: recordDays.has(dateStr),
+      isSelected: dateStr === selectedDate,
+      dateStr,
+      isFuture: dateStr > todayStr
+    });
+  }
+  const nm = month === 11 ? 0 : month + 1;
+  const ny = month === 11 ? year + 1 : year;
+  let nextDay = 1;
+  while (days.length < 42) {
+    const dateStr = `${ny}-${pad2(nm + 1)}-${pad2(nextDay)}`;
+    days.push({ day: nextDay, isCurrentMonth: false, isToday: false, hasRecord: recordDays.has(dateStr), isSelected: dateStr === selectedDate, dateStr, isFuture: true });
+    nextDay++;
+  }
+
+  const weeks = [];
+  for (let i = 0; i < days.length; i += 7) {
+    weeks.push({ days: days.slice(i, i + 7), weekIndex: i / 7 });
+  }
+  return weeks;
 }
 
 function buildThemeTagsFromSummaryItems(summaryItems) {
@@ -113,13 +168,14 @@ function querySummaryHistory(db, { type, dateKey }) {
   });
 }
 
-const PERIOD_NAMES = { day: '日', week: '周', year: '年' };
-const COVER_EMOJIS = { day: '☀️', week: '🌸', year: '🎆' };
+const PERIOD_NAMES = { day: '日', week: '周' };
+const COVER_EMOJIS = { day: '☀️', week: '🌸' };
 
 Page({
   data: {
     currentPeriod: 'day',
-    periodOffset: -1,
+    selectedDate: '',
+    todayStr: '',
     periodLabel: '',
     periodName: '日',
     coverEmoji: '☀️',
@@ -136,7 +192,13 @@ Page({
     showSwipeHint: true,
     avatarDisplayUrl: '',
     hasAvatarImage: false,
-    chooseAvatarSupported: false
+    chooseAvatarSupported: false,
+    showCalendar: false,
+    calWeekDays: ['日', '一', '二', '三', '四', '五', '六'],
+    calTitle: '',
+    calDays: [],
+    calYear: 0,
+    calMonth: 0
   },
 
   onLoad() {
@@ -152,8 +214,13 @@ Page({
       return;
     }
 
+    const now = new Date();
     this.setData({
-      chooseAvatarSupported: !!(wx.canIUse && wx.canIUse('button.open-type.chooseAvatar'))
+      chooseAvatarSupported: !!(wx.canIUse && wx.canIUse('button.open-type.chooseAvatar')),
+      selectedDate: toDateString(now),
+      todayStr: toDateString(now),
+      calYear: now.getFullYear(),
+      calMonth: now.getMonth()
     });
     this.loadAvatar();
     this.updatePeriodInfo();
@@ -204,18 +271,21 @@ Page({
   },
 
   getRange() {
-    const { currentPeriod, periodOffset } = this.data;
-    if (currentPeriod === 'day') return getDayRange(periodOffset);
-    if (currentPeriod === 'week') return getWeekRange(periodOffset);
-    return getYearRange(periodOffset);
+    const { currentPeriod, selectedDate, todayStr } = this.data;
+    const baseDate = parseDateString(selectedDate || todayStr || toDateString(new Date()));
+    if (currentPeriod === 'day') {
+      return getDayRangeByDate(baseDate, parseDateString(todayStr || toDateString(new Date())));
+    }
+    return getWeekRangeByDate(baseDate);
   },
 
-  isFutureOffset(offset) {
-    return offset > 0;
+  isFutureDate(date) {
+    const today = parseDateString(this.data.todayStr || toDateString(new Date()));
+    return toDateString(date) > toDateString(today);
   },
 
   updatePeriodInfo() {
-    const { currentPeriod, periodOffset } = this.data;
+    const { currentPeriod } = this.data;
     const range = this.getRange();
     this.setData({
       periodLabel: range.label,
@@ -234,29 +304,11 @@ Page({
       highlights: []
     });
     const db = wx.cloud.database();
-    const request = (() => {
-      if (period === 'year') {
-        const year = range.start.getFullYear();
-        return new Promise((resolve) => {
-          db.collection('diaries')
-            .where({
-              type: 'yearly',
-              year
-            })
-            .orderBy('timestamp', 'desc')
-            .limit(1)
-            .get({
-              success: res => resolve({ source: 'diaries', data: (res.data || [])[0] || null, error: null }),
-              fail: err => resolve({ source: 'diaries', data: null, error: err })
-            });
-        });
-      }
-      const type = period === 'day' ? 'daily' : 'weekly';
-      const dateKey = period === 'day'
-        ? formatSummaryDate(range.start)
-        : `${formatSummaryDate(range.start)} 至 ${formatSummaryDate(range.end)}`;
-      return querySummaryHistory(db, { type, dateKey });
-    })();
+    const type = period === 'day' ? 'daily' : 'weekly';
+    const dateKey = period === 'day'
+      ? formatSummaryDate(range.start)
+      : `${formatSummaryDate(range.start)} 至 ${formatSummaryDate(range.end)}`;
+    const request = querySummaryHistory(db, { type, dateKey });
 
     Promise.resolve(request)
       .then(result => {
@@ -307,7 +359,98 @@ Page({
   selectPeriod(e) {
     const period = e.currentTarget.dataset.period;
     if (period === this.data.currentPeriod) return;
-    this.setData({ currentPeriod: period, periodOffset: -1 });
+    this.setData({ currentPeriod: period });
+    this.updatePeriodInfo();
+  },
+
+  openCalendar() {
+    const selected = parseDateString(this.data.selectedDate || this.data.todayStr);
+    this.setData({
+      showCalendar: true,
+      calYear: selected.getFullYear(),
+      calMonth: selected.getMonth()
+    });
+    this.loadCalRecords();
+  },
+
+  closeCalendar() {
+    this.setData({ showCalendar: false });
+  },
+
+  preventTap() {},
+
+  loadCalRecords() {
+    const year = this.data.calYear;
+    const month = this.data.calMonth;
+    const start = new Date(year, month, 1);
+    const end = new Date(year, month + 1, 0, 23, 59, 59, 999);
+    const db = wx.cloud.database();
+    const _ = db.command;
+    db.collection('records')
+      .where({ timestamp: _.gte(start.getTime()).and(_.lte(end.getTime())) })
+      .limit(1000)
+      .get({
+        success: res => {
+          const recordDays = new Set();
+          (res.data || []).forEach(item => {
+            const d = new Date(item.timestamp);
+            recordDays.add(toDateString(d));
+          });
+          this.setData({
+            calTitle: `${year}年 ${month + 1}月`,
+            calDays: generateCalendarDays(year, month, recordDays, this.data.selectedDate)
+          });
+        },
+        fail: () => {
+          this.setData({
+            calTitle: `${year}年 ${month + 1}月`,
+            calDays: generateCalendarDays(year, month, new Set(), this.data.selectedDate)
+          });
+        }
+      });
+  },
+
+  calPrevMonth() {
+    let year = this.data.calYear;
+    let month = this.data.calMonth - 1;
+    if (month < 0) { month = 11; year--; }
+    this.setData({ calYear: year, calMonth: month });
+    this.loadCalRecords();
+  },
+
+  calNextMonth() {
+    let year = this.data.calYear;
+    let month = this.data.calMonth + 1;
+    const today = parseDateString(this.data.todayStr || toDateString(new Date()));
+    const maxYear = today.getFullYear();
+    const maxMonth = today.getMonth();
+    if (month > 11) { month = 0; year++; }
+    if (year > maxYear || (year === maxYear && month > maxMonth)) return;
+    this.setData({ calYear: year, calMonth: month });
+    this.loadCalRecords();
+  },
+
+  goToToday() {
+    const today = parseDateString(this.data.todayStr || toDateString(new Date()));
+    this.setData({
+      selectedDate: toDateString(today),
+      calYear: today.getFullYear(),
+      calMonth: today.getMonth(),
+      showCalendar: false
+    });
+    this.updatePeriodInfo();
+  },
+
+  onCalDayTap(e) {
+    const dateStr = e.currentTarget.dataset.date;
+    if (dateStr > this.data.todayStr) {
+      wx.showToast({ title: '暂不能选择未来日期', icon: 'none', duration: 2000 });
+      return;
+    }
+    this.setData({
+      selectedDate: dateStr,
+      showCalendar: false
+    });
     this.updatePeriodInfo();
   },
 
@@ -348,9 +491,11 @@ Page({
     }
 
     const direction = deltaX > 0 ? -1 : 1;
-    const newOffset = this.data.periodOffset + direction;
+    const step = this.data.currentPeriod === 'week' ? 7 : 1;
+    const current = parseDateString(this.data.selectedDate || this.data.todayStr);
+    const nextDate = addDays(current, direction * step);
 
-    if (this.isFutureOffset(newOffset)) {
+    if (this.isFutureDate(nextDate)) {
       this.setData({ cardTranslateX: 0, cardOpacity: 1 });
       setTimeout(() => this.setData({ cardAnimating: false }), 300);
       wx.showToast({ title: '已到达最新日期', icon: 'none', duration: 1500 });
@@ -365,7 +510,7 @@ Page({
 
     setTimeout(() => {
       this.setData({
-        periodOffset: newOffset,
+        selectedDate: toDateString(nextDate),
         cardAnimating: false,
         cardTranslateX: direction * 300,
         cardOpacity: 0
